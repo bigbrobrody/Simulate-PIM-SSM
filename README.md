@@ -30,9 +30,9 @@ This simulation environment allows you to:
 - **Windows 10/11** (64-bit)
 - **VirtualBox** (version 6.1 or later)
   - Download from: https://www.virtualbox.org/
-- **GNS3** (version 2.2 or later) - not required???
+- **GNS3** (version 2.2 or later)
   - Download from: https://www.gns3.com/
-- **GNS3 VM** (for VirtualBox) - open in virtualBox
+- **GNS3 VM** (for VirtualBox)
   - Download from: https://www.gns3.com/software/download-vm
 
 ### Hardware Requirements
