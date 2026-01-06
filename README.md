@@ -106,7 +106,7 @@ This simulation environment allows you to:
 ### Topology Components
 
 1. **Router R1** (Core Router)
-   - Acts as the Rendezvous Point (RP) alternative in SSM
+   - Core multicast router connecting source and client networks
    - Connects to upstream network
    - PIM-SSM enabled
 
@@ -288,7 +288,9 @@ write memory
 
    Or use a test pattern:
    ```bash
-   cvlc -vvv --color screen:// --screen-fps=25 --sout '#transcode{vcodec=mp2v,vb=4096,acodec=mpga,ab=192,scale=1,channels=2,samplerate=44100}:duplicate{dst=std{access=udp,mux=ts,dst=239.1.1.1:5004}}' --loop
+   cvlc -vvv --color screen:// --screen-fps=25 \
+     --sout '#transcode{vcodec=mp2v,vb=4096,acodec=mpga,ab=192,scale=1,channels=2,samplerate=44100}:duplicate{dst=std{access=udp,mux=ts,dst=239.1.1.1:5004}}' \
+     --loop
    ```
 
 ### Option 2: Using FFmpeg (Linux VM)
