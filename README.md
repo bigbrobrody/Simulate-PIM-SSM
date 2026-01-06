@@ -32,7 +32,7 @@ This simulation environment allows you to:
   - Download from: https://www.virtualbox.org/
 - **GNS3** (version 2.2 or later)
   - Download from: https://www.gns3.com/
-- **GNS3 VM** (for VirtualBox)
+- **GNS3 VM** (for VirtualBox) - this is downloaded by the GNS3 installer
   - Download from: https://www.gns3.com/software/download-vm
 
 ### Hardware Requirements
