@@ -219,8 +219,9 @@ VBoxManage modifyvm "Router-R2" ^
 # Use 'VBoxManage list hostonlyifs' to see available host-only adapters
 
 # Create and attach storage
+cd ..\Router-R2
 VBoxManage storagectl "Router-R2" --name "SATA" --add sata --controller IntelAhci
-VBoxManage clonemedium disk openwrt.vdi Router-R2.vdi
+VBoxManage clonemedium disk ..\openwrt.vdi Router-R2.vdi
 VBoxManage storageattach "Router-R2" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Router-R2.vdi
 ```
 
