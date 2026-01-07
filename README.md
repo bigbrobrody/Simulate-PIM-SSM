@@ -151,8 +151,10 @@ We'll use the SSM range **232.0.0.0/8** (standard SSM range):
 3. Download and install the **VirtualBox Extension Pack** (same version as VirtualBox)
 
 **Verify installation:**
+From a command prompt
 ```bash
-C:\Program Files\Oracle\VirtualBox\VBoxManage --version
+cd C:\Program Files\Oracle\VirtualBox
+VBoxManage --version
 ```
 
 ### Step 2: Create OpenWRT Router VMs
