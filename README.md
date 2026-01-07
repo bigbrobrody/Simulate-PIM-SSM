@@ -210,6 +210,9 @@ VBoxManage modifyvm "Router-R2" \
   --nic2 hostonly --hostonlyadapter2 "VirtualBox Host-Only Ethernet Adapter" \
   --boot1 disk --boot2 none --boot3 none --boot4 none
 
+# Note: Replace "VirtualBox Host-Only Ethernet Adapter" with your actual adapter name
+# Use 'VBoxManage list hostonlyifs' to see available host-only adapters
+
 # Create and attach storage
 VBoxManage storagectl "Router-R2" --name "SATA" --add sata --controller IntelAhci
 VBoxManage clonemedium disk openwrt.vdi Router-R2.vdi
@@ -619,6 +622,8 @@ You can also use VLC from the Windows command line:
 "C:\Program Files\VideoLAN\VLC\vlc.exe" udp://@232.1.1.1:5000
 ```
 
+**Note**: Adjust the path if you installed the 32-bit version (`C:\Program Files (x86)\VideoLAN\VLC\vlc.exe`) or used a custom installation directory.
+
 #### Troubleshooting Windows Firewall
 
 If you don't receive multicast traffic:
@@ -849,7 +854,8 @@ Should show multicast groups that the Windows client has joined.
    - Should show joined multicast groups
 
 3. **Test with different player**:
-   - Try FFplay (part of FFmpeg): `ffplay -i udp://@232.1.1.1:5000`
+   - Try FFplay (requires FFmpeg to be installed): `ffplay -i udp://@232.1.1.1:5000`
+   - Download FFmpeg from [ffmpeg.org](https://ffmpeg.org/download.html) if needed
 
 4. **Check network statistics**:
    ```cmd
