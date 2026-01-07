@@ -149,11 +149,11 @@ We'll use the SSM range **232.0.0.0/8** (standard SSM range):
 1. Download VirtualBox from [virtualbox.org](https://www.virtualbox.org/wiki/Downloads)
 2. Install VirtualBox for your operating system
 3. Download and install the **VirtualBox Extension Pack** (same version as VirtualBox)
+4. Add C:\Program Files\Oracle\VirtualBox to path
 
 **Verify installation:**
 From a command prompt
 ```bash
-cd C:\Program Files\Oracle\VirtualBox
 VBoxManage --version
 ```
 
