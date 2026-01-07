@@ -174,6 +174,8 @@ We'll create two OpenWRT router VMs (R1, R2).
 
 ```cmd
 VBoxManage convertfromraw openwrt-21.02.3-x86-64-generic-ext4-combined.img openwrt.vdi --format VDI
+move openwrt.vdi "C:\Users\[username]\VirtualBox VMs"
+cd "C:\Users\[username]\VirtualBox VMs"
 ```
 
 #### Create Router R1
@@ -192,8 +194,9 @@ VBoxManage modifyvm "Router-R1" ^
   --boot1 disk --boot2 none --boot3 none --boot4 none
 
 # Create and attach storage
+cd Router-R1
 VBoxManage storagectl "Router-R1" --name "SATA" --add sata --controller IntelAhci
-VBoxManage clonemedium disk openwrt.vdi Router-R1.vdi
+VBoxManage clonemedium disk ..\openwrt.vdi Router-R1.vdi
 VBoxManage storageattach "Router-R1" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Router-R1.vdi
 ```
 
