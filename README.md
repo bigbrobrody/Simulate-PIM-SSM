@@ -92,7 +92,7 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 │  │  │  Source VM 1 │  │  Source VM 2 │  │  Source VM 3 │  │  │
 │  │  │  GStreamer   │  │  GStreamer   │  │  GStreamer   │  │  │
 │  │  │  192.168.1.10│  │  192.168.1.11│  │  192.168.1.12│  │  │
-│  │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  │  │
+│  │  └──────┬───────┘  └───────┬──────┘  └────────┬─────┘  │  │
 │  │         │                  │                  │        │  │
 │  │         └──────────────────┴──────────────────┘        │  │
 │  │                            │                           │  │
@@ -260,7 +260,7 @@ Repeat for Source-2 and Source-3, adjusting the names accordingly.
 To allow the Windows host to communicate with the simulated network:
 
 1. Open VirtualBox Manager
-2. Go to **File > Host Network Manager**
+2. Go to **Network > Host-only Networks**
 3. Create a new host-only network (or use existing) with:
    - IPv4 Address: 192.168.2.1
    - IPv4 Network Mask: 255.255.255.0
