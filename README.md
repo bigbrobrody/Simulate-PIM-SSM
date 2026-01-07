@@ -1091,7 +1091,8 @@ Should show multicast groups that the Windows client has joined.
    # Incorrect system time can cause SSL/TLS errors
    date
    
-   # Set time manually if needed (example format)
+   # Set time manually if needed
+   # Example: date --set="2024-03-15 14:30:00"
    date --set="YYYY-MM-DD HH:MM:SS"
    ```
 
