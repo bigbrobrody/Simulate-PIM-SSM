@@ -253,6 +253,7 @@ VBoxManage storagectl "Source-1" --name "SATA" --add sata --controller IntelAhci
 VBoxManage storageattach "Source-1" --storagectl "SATA" --port 1 --device 0 --type dvddrive --medium \path\to\debian.iso
 
 # Create virtual disk
+cd ..\Source-1
 VBoxManage createmedium disk --filename Source-1.vdi --size 20480
 VBoxManage storageattach "Source-1" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Source-1.vdi
 ```
