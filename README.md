@@ -99,13 +99,13 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 │  │                    ┌───────┴────────┐                  │  │
 │  │                    │   Router R1    │                  │  │
 │  │                    │   (OpenWRT)    │                  │  │
-│  │                    │   PIM-SSM      │                  │  │
+│  │                    │  PIM-SM (SSM)  │                  │  │
 │  │                    └───────┬────────┘                  │  │
 │  │                            │                           │  │
 │  │                    ┌───────┴────────┐                  │  │
 │  │                    │   Router R2    │                  │  │
 │  │                    │   (OpenWRT)    │                  │  │
-│  │                    │   PIM-SSM      │                  │  │
+│  │                    │  PIM-SM (SSM)  │                  │  │
 │  │                    └───────┬────────┘                  │  │
 │  │                            │                           │  │
 │  └────────────────────────────┼───────────────────────────┘  │
@@ -331,14 +331,14 @@ Start each router VM and configure via console.
        option gateway '10.0.1.2'
    ```
 
-4. **Install PIM-SSM packages**:
+4. **Install PIM-SM packages**:
 
    ```bash
    opkg update
-   opkg install pimd-dense igmpproxy
+   opkg install pimd igmpproxy
    ```
 
-5. **Configure PIM** - Create `/etc/pimd.conf`:
+5. **Configure PIM-SM** - Create `/etc/pimd.conf`:
 
    ```bash
    vi /etc/pimd.conf
@@ -346,20 +346,29 @@ Start each router VM and configure via console.
 
    Configuration:
    ```
-   # Enable PIM on all interfaces
+   # Enable PIM-SM on all interfaces
    phyint eth0 enable
    phyint eth1 enable
 
-   # SSM group range
-   # Use 232.0.0.0/8 for SSM
-   spt-threshold infinity
-
-   # Bootstrap Router settings
-   bsr-candidate eth0 priority 5
-   rp-candidate eth0 priority 5
+   # SSM range 232.0.0.0/8 doesn't require RP configuration
+   # IGMPv3 handles (S,G) joins directly
    ```
 
-6. **Enable and start services**:
+6. **Configure IGMPv3** (required for SSM):
+
+   ```bash
+   # Ensure IGMPv3 is enabled on all interfaces
+   echo 3 > /proc/sys/net/ipv4/conf/eth0/force_igmp_version
+   echo 3 > /proc/sys/net/ipv4/conf/eth1/force_igmp_version
+
+   # Make persistent by adding to /etc/sysctl.conf
+   cat >> /etc/sysctl.conf << 'EOF'
+   net.ipv4.conf.eth0.force_igmp_version=3
+   net.ipv4.conf.eth1.force_igmp_version=3
+   EOF
+   ```
+
+7. **Enable and start services**:
 
    ```bash
    /etc/init.d/network restart
@@ -406,21 +415,38 @@ Start each router VM and configure via console.
        option gateway '10.0.1.1'
    ```
 
-3. **Install and configure PIM**:
+3. **Install and configure PIM-SM**:
 
    ```bash
    opkg update
-   opkg install pimd-dense igmpproxy
+   opkg install pimd igmpproxy
    ```
 
    Create `/etc/pimd.conf`:
    ```
+   # Enable PIM-SM on all interfaces
    phyint eth0 enable
    phyint eth1 enable
-   spt-threshold infinity
+
+   # SSM range 232.0.0.0/8 doesn't require RP configuration
+   # IGMPv3 handles (S,G) joins directly
    ```
 
-4. **Enable IGMP Proxy** - Create `/etc/config/igmpproxy`:
+4. **Configure IGMPv3** (required for SSM):
+
+   ```bash
+   # Ensure IGMPv3 is enabled on all interfaces
+   echo 3 > /proc/sys/net/ipv4/conf/eth0/force_igmp_version
+   echo 3 > /proc/sys/net/ipv4/conf/eth1/force_igmp_version
+
+   # Make persistent by adding to /etc/sysctl.conf
+   cat >> /etc/sysctl.conf << 'EOF'
+   net.ipv4.conf.eth0.force_igmp_version=3
+   net.ipv4.conf.eth1.force_igmp_version=3
+   EOF
+   ```
+
+5. **Enable IGMP Proxy** - Create `/etc/config/igmpproxy`:
 
    ```
    config igmpproxy
@@ -436,7 +462,7 @@ Start each router VM and configure via console.
        option direction 'downstream'
    ```
 
-5. **Start services**:
+6. **Start services**:
 
    ```bash
    /etc/init.d/network restart
@@ -789,13 +815,13 @@ Should show multicast groups that the Windows client has joined.
 
 5. **Check IGMP proxy configuration** on Router R2
 
-### Issue 3: Routers Not Forming PIM Adjacencies
+### Issue 3: Routers Not Forming PIM-SM Adjacencies
 
 **Symptoms**: No multicast routes between routers
 
 **Solutions**:
 
-1. **Check PIM configuration** in `/etc/pimd.conf`
+1. **Check PIM-SM configuration** in `/etc/pimd.conf`
 
 2. **Restart PIM daemon**:
    ```bash
@@ -1027,6 +1053,8 @@ pkill gst-launch-1.0
 - [Multicast Basics](https://www.cisco.com/c/en/us/td/docs/ios/solutions_docs/ip_multicast/White_papers/mcst_ovr.html)
 - [PIM-SSM Configuration Guide](https://www.cisco.com/c/en/us/support/docs/ip/ip-multicast/43425-pim-ssm.html)
 - [IGMP Snooping](https://en.wikipedia.org/wiki/IGMP_snooping)
+
+**Note**: Source-Specific Multicast (SSM) uses the PIM Sparse Mode (PIM-SM) protocol. SSM is essentially a simplified version of PIM-SM that doesn't require Rendezvous Points (RPs) because the source is explicitly specified in the join. The 232.0.0.0/8 address range is reserved for SSM operation.
 
 ### GStreamer Examples
 
