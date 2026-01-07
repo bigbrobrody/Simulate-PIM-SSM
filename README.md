@@ -167,7 +167,7 @@ We'll create two OpenWRT router VMs (R1, R2).
 2. Download the **x86-64 combined image** (e.g., `openwrt-21.02.3-x86-64-generic-ext4-combined.img.gz`)
 3. Extract the image:
    ```bash
-   gunzip openwrt-21.02.3-x86-64-generic-ext4-combined.img.gz
+   expand openwrt-21.02.3-x86-64-generic-ext4-combined.img.gz openwrt-21.02.3-x86-64-generic-ext4-combined.img
    ```
 
 #### Convert to VirtualBox Format
