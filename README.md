@@ -1,8 +1,8 @@
-# Simulate PIM-SSM Network with VirtualBox, OpenWRT and GStreamer
+# Simulate PIM-SSM Network with VirtualBox, OpenWRT and GStreamer on Windows
 
-A comprehensive guide to simulate a PIM-SSM (Protocol Independent Multicast - Source-Specific Multicast) network for testing custom video clients with source-specific multicast video streaming.
+A comprehensive guide to simulate a PIM-SSM (Protocol Independent Multicast - Source-Specific Multicast) network for testing custom video clients with source-specific multicast video streaming on a Windows host computer.
 
-This guide uses completely free and open-source software: **VirtualBox**, **OpenWRT**, and **GStreamer**.
+This guide uses completely free and open-source software: **VirtualBox**, **OpenWRT**, and **GStreamer**. The video client runs directly on the Windows host computer.
 
 ## Table of Contents
 - [Introduction](#introduction)
@@ -31,7 +31,7 @@ PIM-SSM (Source-Specific Multicast) is a multicast routing protocol that allows 
 - **Security camera systems** with many video feeds
 - **Testing custom multicast video clients** in a controlled environment
 
-This simulation allows you to create a complete PIM-SSM network environment on a single computer using free, open-source tools.
+This simulation allows you to create a complete PIM-SSM network environment on a single Windows computer using free, open-source tools, with the video client running natively on Windows.
 
 ## Why This Approach?
 
@@ -42,13 +42,13 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 3. **Real-world applicable** - OpenWRT is used in production environments
 4. **Easy to replicate** - All software is freely downloadable
 5. **Multiple sources** - Easy to simulate many video sources simultaneously
-6. **Cross-platform** - Works on Windows, macOS, and Linux
+6. **Native Windows client** - Video client runs directly on Windows host without VM overhead
 
 ### What You'll Build
 
-- A multi-router PIM-SSM network
+- A multi-router PIM-SSM network running in VirtualBox VMs
 - Multiple multicast video sources streaming different content
-- Video client VMs that can subscribe to specific sources
+- A Windows-native video client that can subscribe to specific sources
 - A complete test environment for source-specific multicast applications
 
 ## Prerequisites
@@ -59,14 +59,17 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 |----------|---------|---------|----------|
 | **VirtualBox** | 6.1 or later | Virtualization platform | [virtualbox.org](https://www.virtualbox.org/wiki/Downloads) |
 | **OpenWRT** | 21.02 or later | Router operating system | [openwrt.org](https://openwrt.org/downloads) |
-| **Ubuntu/Debian** | 20.04+ | For source and client VMs | [ubuntu.com](https://ubuntu.com/download/desktop) |
+| **Ubuntu/Debian** | 20.04+ | For source VMs | [ubuntu.com](https://ubuntu.com/download/desktop) |
+| **VLC Media Player** | Latest | Video client on Windows | [videolan.org](https://www.videolan.org/vlc/download-windows.html) |
 
 ### Hardware Requirements
 
+- **Operating System**: Windows 10 or 11 (64-bit)
 - **CPU**: Modern multi-core processor (4+ cores recommended)
-- **RAM**: Minimum 8GB (16GB recommended)
+- **RAM**: Minimum 8GB (12GB recommended)
   - Each OpenWRT router: ~256MB
   - Each Ubuntu VM: ~2GB
+  - Windows host overhead: ~2-4GB
 - **Disk Space**: 30GB free space
 - **Network**: Internet connection for initial setup
 
@@ -80,34 +83,41 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Host Computer                              │
+│                  Windows Host Computer                          │
 │                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐        │
-│  │  Source VM 1 │  │  Source VM 2 │  │  Source VM 3 │        │
-│  │  GStreamer   │  │  GStreamer   │  │  GStreamer   │        │
-│  │  192.168.1.10│  │  192.168.1.11│  │  192.168.1.12│        │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘        │
-│         │                  │                  │                 │
-│         └──────────────────┴──────────────────┘                 │
-│                            │                                    │
-│                    ┌───────┴────────┐                          │
-│                    │   Router R1    │                          │
-│                    │   (OpenWRT)    │                          │
-│                    │   PIM-SSM      │                          │
-│                    └───────┬────────┘                          │
-│                            │                                    │
-│              ┌─────────────┴─────────────┐                     │
-│              │                           │                     │
-│      ┌───────┴────────┐         ┌───────┴────────┐           │
-│      │   Router R2    │         │   Router R3    │           │
-│      │   (OpenWRT)    │         │   (OpenWRT)    │           │
-│      │   PIM-SSM      │         │   PIM-SSM      │           │
-│      └───────┬────────┘         └───────┬────────┘           │
-│              │                           │                     │
-│      ┌───────┴────────┐         ┌───────┴────────┐           │
-│      │  Client VM 1   │         │  Client VM 2   │           │
-│      │  192.168.2.10  │         │  192.168.3.10  │           │
-│      └────────────────┘         └────────────────┘           │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │           VirtualBox Virtual Machines                   │  │
+│  │                                                           │  │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │  │
+│  │  │  Source VM 1 │  │  Source VM 2 │  │  Source VM 3 │  │  │
+│  │  │  GStreamer   │  │  GStreamer   │  │  GStreamer   │  │  │
+│  │  │  192.168.1.10│  │  192.168.1.11│  │  192.168.1.12│  │  │
+│  │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  │  │
+│  │         │                  │                  │          │  │
+│  │         └──────────────────┴──────────────────┘          │  │
+│  │                            │                              │  │
+│  │                    ┌───────┴────────┐                    │  │
+│  │                    │   Router R1    │                    │  │
+│  │                    │   (OpenWRT)    │                    │  │
+│  │                    │   PIM-SSM      │                    │  │
+│  │                    └───────┬────────┘                    │  │
+│  │                            │                              │  │
+│  │                    ┌───────┴────────┐                    │  │
+│  │                    │   Router R2    │                    │  │
+│  │                    │   (OpenWRT)    │                    │  │
+│  │                    │   PIM-SSM      │                    │  │
+│  │                    └───────┬────────┘                    │  │
+│  │                            │                              │  │
+│  └────────────────────────────┼──────────────────────────────┘  │
+│                               │                                 │
+│                               │ (Host-Only Network)             │
+│                               │ 192.168.2.0/24                  │
+│                               │                                 │
+│                      ┌────────┴─────────┐                      │
+│                      │  Windows Client  │                      │
+│                      │   VLC Player     │                      │
+│                      │   192.168.2.1    │                      │
+│                      └──────────────────┘                      │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -119,10 +129,8 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 | Network Segment | Subnet | Purpose |
 |----------------|--------|---------|
 | Source Network | 192.168.1.0/24 | Multicast video sources |
-| Client Network 1 | 192.168.2.0/24 | Video client zone 1 |
-| Client Network 2 | 192.168.3.0/24 | Video client zone 2 |
-| Core Link 1 | 10.0.1.0/30 | R1 to R2 interconnect |
-| Core Link 2 | 10.0.2.0/30 | R1 to R3 interconnect |
+| Client Network | 192.168.2.0/24 | Windows host video client |
+| Core Link | 10.0.1.0/30 | R1 to R2 interconnect |
 
 ### Multicast Groups
 
@@ -149,7 +157,7 @@ VBoxManage --version
 
 ### Step 2: Create OpenWRT Router VMs
 
-We'll create three OpenWRT router VMs (R1, R2, R3).
+We'll create two OpenWRT router VMs (R1, R2).
 
 #### Download OpenWRT Image
 
@@ -179,7 +187,6 @@ VBoxManage modifyvm "Router-R1" \
   --cpus 1 \
   --nic1 intnet --intnet1 "source-network" \
   --nic2 intnet --intnet2 "core-link1" \
-  --nic3 intnet --intnet3 "core-link2" \
   --boot1 disk --boot2 none --boot3 none --boot4 none
 
 # Create and attach storage
@@ -200,7 +207,7 @@ VBoxManage modifyvm "Router-R2" \
   --vram 16 \
   --cpus 1 \
   --nic1 intnet --intnet1 "core-link1" \
-  --nic2 intnet --intnet2 "client-network1" \
+  --nic2 hostonly --hostonlyadapter2 "VirtualBox Host-Only Ethernet Adapter" \
   --boot1 disk --boot2 none --boot3 none --boot4 none
 
 # Create and attach storage
@@ -209,26 +216,7 @@ VBoxManage clonemedium disk openwrt.vdi Router-R2.vdi
 VBoxManage storageattach "Router-R2" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Router-R2.vdi
 ```
 
-#### Create Router R3
-
-```bash
-# Create VM
-VBoxManage createvm --name "Router-R3" --ostype "Linux26_64" --register
-
-# Configure VM
-VBoxManage modifyvm "Router-R3" \
-  --memory 256 \
-  --vram 16 \
-  --cpus 1 \
-  --nic1 intnet --intnet1 "core-link2" \
-  --nic2 intnet --intnet2 "client-network2" \
-  --boot1 disk --boot2 none --boot3 none --boot4 none
-
-# Create and attach storage
-VBoxManage storagectl "Router-R3" --name "SATA" --add sata --controller IntelAhci
-VBoxManage clonemedium disk openwrt.vdi Router-R3.vdi
-VBoxManage storageattach "Router-R3" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Router-R3.vdi
-```
+**Note**: Router R2's second NIC is configured as a host-only adapter, allowing the Windows host to communicate with the network as a client.
 
 ### Step 3: Configure Network Topology
 
@@ -260,41 +248,18 @@ VBoxManage storageattach "Source-1" --storagectl "SATA" --port 0 --device 0 --ty
 
 Repeat for Source-2 and Source-3, adjusting the names accordingly.
 
-#### Create Client VMs
+#### Setup VirtualBox Host-Only Network
 
-Create 2 Ubuntu VMs for video clients:
+To allow the Windows host to communicate with the simulated network:
 
-```bash
-# Client-1 on client-network1
-VBoxManage createvm --name "Client-1" --ostype "Ubuntu_64" --register
+1. Open VirtualBox Manager
+2. Go to **File > Host Network Manager**
+3. Create a new host-only network (or use existing) with:
+   - IPv4 Address: 192.168.2.1
+   - IPv4 Network Mask: 255.255.255.0
+   - DHCP Server: Disabled
 
-VBoxManage modifyvm "Client-1" \
-  --memory 2048 \
-  --vram 128 \
-  --cpus 2 \
-  --nic1 intnet --intnet1 "client-network1" \
-  --boot1 disk --boot2 dvd
-
-VBoxManage storagectl "Client-1" --name "SATA" --add sata --controller IntelAhci
-VBoxManage storageattach "Client-1" --storagectl "SATA" --port 1 --device 0 --type dvddrive --medium /path/to/ubuntu-20.04.iso
-VBoxManage createmedium disk --filename Client-1.vdi --size 20480
-VBoxManage storageattach "Client-1" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Client-1.vdi
-
-# Client-2 on client-network2
-VBoxManage createvm --name "Client-2" --ostype "Ubuntu_64" --register
-
-VBoxManage modifyvm "Client-2" \
-  --memory 2048 \
-  --vram 128 \
-  --cpus 2 \
-  --nic1 intnet --intnet1 "client-network2" \
-  --boot1 disk --boot2 dvd
-
-VBoxManage storagectl "Client-2" --name "SATA" --add sata --controller IntelAhci
-VBoxManage storageattach "Client-2" --storagectl "SATA" --port 1 --device 0 --type dvddrive --medium /path/to/ubuntu-20.04.iso
-VBoxManage createmedium disk --filename Client-2.vdi --size 20480
-VBoxManage storageattach "Client-2" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Client-2.vdi
-```
+This network will allow your Windows host to act as a video client.
 
 ### Step 4: Configure OpenWRT Routers
 
@@ -337,12 +302,6 @@ Start each router VM and configure via console.
        option proto 'static'
        option ipaddr '10.0.1.1'
        option netmask '255.255.255.252'
-
-   config interface 'core2'
-       option device 'eth2'
-       option proto 'static'
-       option ipaddr '10.0.2.1'
-       option netmask '255.255.255.252'
    ```
 
 3. **Configure routing**:
@@ -351,19 +310,13 @@ Start each router VM and configure via console.
    vi /etc/config/network
    ```
 
-   Add static routes:
+   Add static route:
    ```
    config route
        option interface 'core1'
        option target '192.168.2.0'
        option netmask '255.255.255.0'
        option gateway '10.0.1.2'
-
-   config route
-       option interface 'core2'
-       option target '192.168.3.0'
-       option netmask '255.255.255.0'
-       option gateway '10.0.2.2'
    ```
 
 4. **Install PIM-SSM packages**:
@@ -384,7 +337,6 @@ Start each router VM and configure via console.
    # Enable PIM on all interfaces
    phyint eth0 enable
    phyint eth1 enable
-   phyint eth2 enable
 
    # SSM group range
    # Use 232.0.0.0/8 for SSM
@@ -428,7 +380,7 @@ Start each router VM and configure via console.
    config interface 'lan'
        option device 'br-lan'
        option proto 'static'
-       option ipaddr '192.168.2.1'
+       option ipaddr '192.168.2.254'
        option netmask '255.255.255.0'
    ```
 
@@ -482,83 +434,7 @@ Start each router VM and configure via console.
    /etc/init.d/igmpproxy start
    ```
 
-#### Router R3 Configuration
-
-1. **Configure** `/etc/config/network`:
-
-   ```
-   config interface 'loopback'
-       option device 'lo'
-       option proto 'static'
-       option ipaddr '127.0.0.1'
-       option netmask '255.0.0.0'
-
-   config interface 'core2'
-       option device 'eth0'
-       option proto 'static'
-       option ipaddr '10.0.2.2'
-       option netmask '255.255.255.252'
-
-   config device
-       option name 'br-lan'
-       option type 'bridge'
-       list ports 'eth1'
-
-   config interface 'lan'
-       option device 'br-lan'
-       option proto 'static'
-       option ipaddr '192.168.3.1'
-       option netmask '255.255.255.0'
-   ```
-
-2. **Add default route**:
-
-   ```
-   config route
-       option interface 'core2'
-       option target '0.0.0.0'
-       option netmask '0.0.0.0'
-       option gateway '10.0.2.1'
-   ```
-
-3. **Install and configure PIM and IGMP** (same as R2):
-
-   ```bash
-   opkg update
-   opkg install pimd-dense igmpproxy
-   ```
-
-   Create `/etc/pimd.conf`:
-   ```
-   phyint eth0 enable
-   phyint eth1 enable
-   spt-threshold infinity
-   ```
-
-   Create `/etc/config/igmpproxy`:
-   ```
-   config igmpproxy
-       option quickleave 1
-
-   config phyint
-       option network 'core2'
-       option direction 'upstream'
-       list altnet '0.0.0.0/0'
-
-   config phyint
-       option network 'lan'
-       option direction 'downstream'
-   ```
-
-4. **Start services**:
-
-   ```bash
-   /etc/init.d/network restart
-   /etc/init.d/pimd enable
-   /etc/init.d/pimd start
-   /etc/init.d/igmpproxy enable
-   /etc/init.d/igmpproxy start
-   ```
+**Note**: Router R2's LAN interface (192.168.2.254) is on the same network as the Windows host (192.168.2.1), allowing the host to receive multicast streams.
 
 ### Step 5: Setup Multicast Sources
 
@@ -679,91 +555,89 @@ sudo systemctl enable multicast-stream.service
 sudo systemctl start multicast-stream.service
 ```
 
-### Step 6: Setup Video Client VMs
+### Step 6: Setup Video Client on Windows Host
 
-Install Ubuntu on client VMs and configure them to receive multicast streams.
+The video client runs directly on your Windows host computer, eliminating the need for a separate VM.
 
-#### Configure Client-1
+#### Configure Windows Network
 
-1. **Install Ubuntu** on Client-1 VM
+1. **Open Network Connections**:
+   - Press `Win + R`, type `ncpa.cpl`, and press Enter
+   - Find the VirtualBox Host-Only Network adapter (e.g., "VirtualBox Host-Only Ethernet Adapter")
 
-2. **Configure static IP** - Edit `/etc/netplan/01-netcfg.yaml`:
+2. **Configure Static IP** (if not already configured):
+   - Right-click the adapter → Properties
+   - Select "Internet Protocol Version 4 (TCP/IPv4)" → Properties
+   - Set:
+     - IP address: `192.168.2.1`
+     - Subnet mask: `255.255.255.0`
+     - Default gateway: `192.168.2.254` (Router R2)
+   - Click OK
 
-   ```yaml
-   network:
-     version: 2
-     ethernets:
-       enp0s3:
-         addresses:
-           - 192.168.2.10/24
-         gateway4: 192.168.2.1
-         nameservers:
-           addresses: [8.8.8.8, 8.8.4.4]
+3. **Verify connectivity**:
+   ```cmd
+   ping 192.168.2.254
    ```
 
-   Apply:
-   ```bash
-   sudo netplan apply
+#### Install VLC Media Player
+
+1. **Download VLC**:
+   - Visit [https://www.videolan.org/vlc/download-windows.html](https://www.videolan.org/vlc/download-windows.html)
+   - Download the latest 64-bit installer
+
+2. **Install VLC**:
+   - Run the installer
+   - Follow the installation wizard
+   - Complete the installation
+
+#### Test Receiving Multicast Stream
+
+1. **Open VLC Media Player**
+
+2. **Open Network Stream**:
+   - Go to **Media > Open Network Stream** (or press `Ctrl+N`)
+   - Enter the multicast address:
+     - For Source 1: `udp://@232.1.1.1:5000`
+     - For Source 2: `udp://@232.1.1.2:5000`
+     - For Source 3: `udp://@232.1.1.3:5000`
+   - Click **Play**
+
+3. **Create a playlist** for easy switching between sources:
+   - Go to **Media > Open Multiple Files**
+   - Click **Add** and enter each multicast address:
+     - `udp://@232.1.1.1:5000`
+     - `udp://@232.1.1.2:5000`
+     - `udp://@232.1.1.3:5000`
+   - Check "Show more options" and set "Caching" to 300ms or higher
+   - Click **Play**
+
+#### Alternative: Command Line Playback
+
+You can also use VLC from the Windows command line:
+
+```cmd
+"C:\Program Files\VideoLAN\VLC\vlc.exe" udp://@232.1.1.1:5000
+```
+
+#### Troubleshooting Windows Firewall
+
+If you don't receive multicast traffic:
+
+1. **Allow VLC through Windows Firewall**:
+   - Open Windows Defender Firewall
+   - Click "Allow an app or feature through Windows Defender Firewall"
+   - Find VLC Media Player and enable both Private and Public networks
+   - Click OK
+
+2. **Or temporarily disable firewall for testing** (not recommended for production):
+   ```cmd
+   netsh advfirewall set allprofiles state off
    ```
 
-3. **Install VLC and GStreamer**:
-
-   ```bash
-   sudo apt update
-   sudo apt install -y vlc gstreamer1.0-tools gstreamer1.0-plugins-base \
-     gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly
+   To re-enable:
+   ```cmd
+   netsh advfirewall set allprofiles state on
    ```
-
-4. **Install IGMPv3 tools**:
-
-   ```bash
-   sudo apt install -y smcroute
-   ```
-
-5. **Test receiving stream from Source-1**:
-
-   Using VLC:
-   ```bash
-   vlc udp://@232.1.1.1:5000
-   ```
-
-   Using GStreamer:
-   ```bash
-   gst-launch-1.0 udpsrc uri=udp://232.1.1.1:5000 ! decodebin ! autovideosink
-   ```
-
-6. **Create receive script** - `/home/user/watch.sh`:
-
-   ```bash
-   #!/bin/bash
-   # Receive multicast stream
-   if [ $# -eq 0 ]; then
-       echo "Usage: $0 <source_number>"
-       echo "  1 = Source 1 (232.1.1.1)"
-       echo "  2 = Source 2 (232.1.1.2)"
-       echo "  3 = Source 3 (232.1.1.3)"
-       exit 1
-   fi
-
-   case $1 in
-       1) ADDR="232.1.1.1" ;;
-       2) ADDR="232.1.1.2" ;;
-       3) ADDR="232.1.1.3" ;;
-       *) echo "Invalid source"; exit 1 ;;
-   esac
-
-   echo "Watching source $1 at $ADDR:5000"
-   vlc udp://@${ADDR}:5000
-   ```
-
-   Make executable:
-   ```bash
-   chmod +x /home/user/watch.sh
-   ```
-
-#### Configure Client-2
-
-Repeat the same steps for Client-2 with IP address 192.168.3.10 and gateway 192.168.3.1.
 
 ## Testing and Verification
 
@@ -772,15 +646,6 @@ Repeat the same steps for Client-2 with IP address 192.168.3.10 and gateway 192.
 From each source VM, ping the router:
 ```bash
 ping 192.168.1.1
-```
-
-From each client VM, ping the router:
-```bash
-# Client-1
-ping 192.168.2.1
-
-# Client-2
-ping 192.168.3.1
 ```
 
 ### Step 2: Verify Multicast Routing
@@ -817,35 +682,35 @@ tcpdump -i eth0 dst host 232.1.1.1 or dst host 232.1.1.2 or dst host 232.1.1.3
 
 ### Step 5: Test Client Reception
 
-On Client-1, try receiving each source:
-```bash
-# Watch source 1
-./watch.sh 1
+On Windows host, open VLC and receive each source:
 
-# Watch source 2
-./watch.sh 2
+1. **Open VLC Media Player**
+2. **Media > Open Network Stream**
+3. **Enter multicast address**:
+   - Source 1: `udp://@232.1.1.1:5000`
+   - Source 2: `udp://@232.1.1.2:5000`
+   - Source 3: `udp://@232.1.1.3:5000`
+4. **Click Play**
 
-# Watch source 3
-./watch.sh 3
-```
+You should see the video stream from the selected source.
 
 ### Step 6: Verify Source-Specific Multicast
 
-Use `tcpdump` on client to verify SSM is working:
-```bash
-sudo tcpdump -i enp0s3 -vv igmp
-```
+Use Wireshark on Windows to verify SSM is working:
 
-You should see IGMP v3 membership reports with SOURCE records.
+1. **Download and install Wireshark** from [wireshark.org](https://www.wireshark.org/download.html)
+2. **Start capture** on the VirtualBox Host-Only adapter
+3. **Filter for IGMP**: `igmp`
+4. **Look for IGMPv3 Membership Reports** with SOURCE records when you start playing a stream in VLC
 
 ### Step 7: Check IGMP Membership
 
-On the client router (R2 or R3):
+On Router R2:
 ```bash
 cat /proc/net/igmp
 ```
 
-Should show multicast groups that clients have joined.
+Should show multicast groups that the Windows client has joined.
 
 ## Troubleshooting
 
@@ -883,22 +748,32 @@ Should show multicast groups that clients have joined.
 
 ### Issue 2: Client Can't Join Multicast Group
 
-**Symptoms**: IGMP membership not showing on router
+**Symptoms**: IGMP membership not showing on router, Windows client not receiving stream
 
 **Solutions**:
 
-1. **Verify IGMPv3 is enabled**:
-   ```bash
-   cat /proc/sys/net/ipv4/conf/all/force_igmp_version
-   # Should be 0 (auto) or 3
+1. **Check Windows Firewall**:
+   - Ensure VLC is allowed through Windows Firewall
+   - Or temporarily disable firewall for testing
+
+2. **Verify network adapter settings**:
+   ```cmd
+   ipconfig /all
+   ```
+   Ensure the VirtualBox Host-Only adapter has IP 192.168.2.1
+
+3. **Check routing table**:
+   ```cmd
+   route print
+   ```
+   Ensure there's a route to 192.168.2.0/24 via the Host-Only adapter
+
+4. **Verify Router R2 connectivity**:
+   ```cmd
+   ping 192.168.2.254
    ```
 
-2. **Check IGMP proxy configuration** on routers R2 and R3
-
-3. **Manually join group** for testing:
-   ```bash
-   smcroute -j enp0s3 232.1.1.1
-   ```
+5. **Check IGMP proxy configuration** on Router R2
 
 ### Issue 3: Routers Not Forming PIM Adjacencies
 
@@ -916,7 +791,6 @@ Should show multicast groups that clients have joined.
 3. **Verify IP connectivity** between routers:
    ```bash
    ping 10.0.1.1  # From R2 to R1
-   ping 10.0.2.1  # From R3 to R1
    ```
 
 ### Issue 4: High Packet Loss or Jitter
@@ -939,7 +813,7 @@ Should show multicast groups that clients have joined.
 
 ### Issue 5: Stream Not Starting
 
-**Symptoms**: GStreamer errors or no output
+**Symptoms**: GStreamer errors or no output from source VMs
 
 **Solutions**:
 
@@ -959,20 +833,43 @@ Should show multicast groups that clients have joined.
    ip addr show
    ```
 
+### Issue 6: Windows Client Not Receiving Stream
+
+**Symptoms**: VLC shows "no input" or blank screen on Windows
+
+**Solutions**:
+
+1. **Check VLC caching settings**:
+   - In VLC: Tools > Preferences > Input/Codecs
+   - Increase "Network Caching" to 1000ms or higher
+
+2. **Verify multicast traffic reaching Windows**:
+   - Open Command Prompt as Administrator
+   - Run: `netsh interface ipv4 show joins`
+   - Should show joined multicast groups
+
+3. **Test with different player**:
+   - Try FFplay (part of FFmpeg): `ffplay -i udp://@232.1.1.1:5000`
+
+4. **Check network statistics**:
+   ```cmd
+   netstat -s -p udp
+   ```
+   Look for packet loss or errors
+
 ## Advanced Scenarios
 
 ### Multiple Clients on Same Network
 
-Simulate multiple clients subscribing to different sources:
+You can run multiple instances of VLC on Windows to simulate multiple clients subscribing to different sources:
 
-**Client Script for Random Source Selection**:
-```bash
-#!/bin/bash
-# Random source selector
-SOURCE=$((1 + RANDOM % 3))
-echo "Selecting random source: $SOURCE"
-./watch.sh $SOURCE
-```
+1. **Open multiple VLC windows**
+2. **Each window can play a different source**:
+   - Window 1: `udp://@232.1.1.1:5000`
+   - Window 2: `udp://@232.1.1.2:5000`
+   - Window 3: `udp://@232.1.1.3:5000`
+
+Alternatively, you can add additional VMs as clients if needed by connecting them to the same host-only network (192.168.2.0/24).
 
 ### Load Testing with Many Sources
 
@@ -1020,9 +917,9 @@ gst-launch-1.0 -v \
 
 ### Integration with Custom Applications
 
-Your custom video client can join specific sources using socket programming:
+Your custom video client can join specific sources using socket programming.
 
-**Python Example**:
+**Python Example (works on Windows)**:
 ```python
 import socket
 import struct
@@ -1039,13 +936,53 @@ sock.bind(('', 5000))
 mreq = struct.pack("4s4s4s", 
                    socket.inet_aton('232.1.1.1'),    # Group
                    socket.inet_aton('192.168.1.10'),  # Source
-                   socket.inet_aton('0.0.0.0'))       # Interface
+                   socket.inet_aton('192.168.2.1'))   # Local interface (Windows host)
 sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_SOURCE_MEMBERSHIP, mreq)
 
 # Receive data
 while True:
     data, addr = sock.recvfrom(1316)
     # Process video data...
+```
+
+**C++ Example (Windows)**:
+```cpp
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+
+int main() {
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+    
+    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    
+    // Bind to port
+    sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(5000);
+    addr.sin_addr.s_addr = INADDR_ANY;
+    bind(sock, (sockaddr*)&addr, sizeof(addr));
+    
+    // Join SSM group
+    struct ip_mreq_source mreq;
+    mreq.imr_multiaddr.s_addr = inet_addr("232.1.1.1");  // Group
+    mreq.imr_sourceaddr.s_addr = inet_addr("192.168.1.10"); // Source
+    mreq.imr_interface.s_addr = inet_addr("192.168.2.1");   // Local interface
+    setsockopt(sock, IPPROTO_IP, IP_ADD_SOURCE_MEMBERSHIP, 
+               (char*)&mreq, sizeof(mreq));
+    
+    // Receive data
+    char buffer[1500];
+    while (true) {
+        int len = recv(sock, buffer, sizeof(buffer), 0);
+        // Process video data...
+    }
+    
+    closesocket(sock);
+    WSACleanup();
+    return 0;
+}
 ```
 
 ### Simulating Failover Scenarios
@@ -1084,11 +1021,18 @@ pkill gst-launch-1.0
 
 ### Tools and Utilities
 
+**Linux Tools**:
 - **tcpdump**: Network packet analyzer - `sudo apt install tcpdump`
 - **Wireshark**: GUI packet analyzer - `sudo apt install wireshark`
 - **iperf3**: Network bandwidth testing - `sudo apt install iperf3`
 - **mtools**: Multicast testing tools - `sudo apt install mtools`
 - **smcroute**: Static multicast routing - `sudo apt install smcroute`
+
+**Windows Tools**:
+- **Wireshark**: Download from [wireshark.org](https://www.wireshark.org/download.html)
+- **VLC Media Player**: Download from [videolan.org](https://www.videolan.org/vlc/)
+- **FFmpeg**: Download from [ffmpeg.org](https://ffmpeg.org/download.html)
+- **iperf3**: Download from [iperf.fr](https://iperf.fr/iperf-download.php)
 
 ### Useful Commands Reference
 
@@ -1125,6 +1069,27 @@ tcpdump -i <interface> multicast
 cat /proc/sys/net/ipv4/conf/<interface>/force_igmp_version
 ```
 
+**Windows Client Commands**:
+```cmd
+# Show network configuration
+ipconfig /all
+
+# Show routing table
+route print
+
+# Show multicast group memberships
+netsh interface ipv4 show joins
+
+# Show UDP statistics
+netstat -s -p udp
+
+# Test connectivity to router
+ping 192.168.2.254
+
+# Trace route to source network
+tracert 192.168.1.10
+```
+
 **GStreamer Testing Commands**:
 ```bash
 # Test video output
@@ -1143,12 +1108,13 @@ gst-launch-1.0 udpsrc uri=udp://232.1.1.1:5000 ! decodebin ! autovideosink -v
 ## Next Steps
 
 1. **Expand the Network**: Add more routers to simulate a larger topology
-2. **Test Failover**: Implement redundant sources and test failover scenarios
-3. **Add Monitoring**: Set up SNMP or other monitoring on routers
-4. **Performance Testing**: Measure latency and bandwidth with multiple concurrent streams
-5. **Custom Clients**: Develop your own multicast video clients using the simulation
-6. **Security**: Add authentication and encryption to streams
-7. **QoS**: Implement Quality of Service policies on routers
+2. **Add More Clients**: Connect additional Windows machines or VMs to the host-only network
+3. **Test Failover**: Implement redundant sources and test failover scenarios
+4. **Add Monitoring**: Set up SNMP or other monitoring on routers
+5. **Performance Testing**: Measure latency and bandwidth with multiple concurrent streams
+6. **Custom Clients**: Develop your own multicast video clients using the simulation
+7. **Security**: Add authentication and encryption to streams
+8. **QoS**: Implement Quality of Service policies on routers
 
 ## Contributing
 
