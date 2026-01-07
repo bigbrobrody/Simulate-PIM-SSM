@@ -68,7 +68,7 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 - **CPU**: Modern multi-core processor (4+ cores recommended)
 - **RAM**: Minimum 8GB (12GB recommended)
   - Each OpenWRT router: ~256MB
-  - Each Ubuntu VM: ~2GB
+  - Each Debian VM: ~2GB
   - Windows host overhead: ~2-4GB
 - **Disk Space**: 30GB free space
 - **Network**: Internet connection for initial setup
@@ -273,6 +273,120 @@ To allow the Windows host to communicate with the simulated network:
 
 This network will allow your Windows host to act as a video client.
 
+### Step 3.5: Enable Internet Connectivity for Package Installation
+
+**Important**: The VMs are configured with only internal networks (intnet) which don't provide Internet access. Package managers (`opkg` for OpenWRT, `apt` for Debian) require Internet connectivity to download packages during initial setup. We'll add temporary NAT adapters to allow Internet access, then remove them after packages are installed to return to the isolated simulation environment.
+
+#### Add NAT Adapters to VMs
+
+Add a NAT network adapter as the third NIC on both routers:
+
+```cmd
+# Add NAT adapter to Router-R1
+VBoxManage modifyvm "Router-R1" --nic3 nat
+
+# Add NAT adapter to Router-R2
+VBoxManage modifyvm "Router-R2" --nic3 nat
+```
+
+For Debian source VMs, add NAT adapter as second NIC:
+
+```cmd
+# Add NAT adapter to each source VM
+VBoxManage modifyvm "Source-1" --nic2 nat
+VBoxManage modifyvm "Source-2" --nic2 nat
+VBoxManage modifyvm "Source-3" --nic2 nat
+```
+
+#### Configure OpenWRT Routers for Internet Access
+
+On **Router-R1** and **Router-R2**, configure the WAN interface:
+
+1. **Start the router VM** and log in via console
+
+2. **Edit network configuration**:
+   ```bash
+   vi /etc/config/network
+   ```
+
+3. **Add WAN interface configuration**:
+   ```
+   config interface 'wan'
+       option device 'eth2'
+       option proto 'dhcp'
+   ```
+
+4. **Restart networking**:
+   ```bash
+   /etc/init.d/network restart
+   ```
+
+5. **Verify Internet connectivity**:
+   ```bash
+   ping -c 4 8.8.8.8
+   ```
+
+#### Configure Debian VMs for Internet Access
+
+On **each Debian source VM**, configure the NAT interface:
+
+1. **Edit network interfaces**:
+   ```bash
+   sudo vi /etc/network/interfaces
+   ```
+
+2. **Add NAT interface configuration**:
+   ```
+   # NAT interface for Internet access (temporary)
+   auto enp0s8
+   iface enp0s8 inet dhcp
+   ```
+
+3. **Bring up the interface**:
+   ```bash
+   sudo ifup enp0s8
+   ```
+
+4. **Verify Internet connectivity**:
+   ```bash
+   ping -c 4 8.8.8.8
+   ```
+
+#### Install Required Packages
+
+Now you can install packages on all VMs:
+
+**On OpenWRT routers**:
+```bash
+opkg update
+opkg install pimd igmpproxy
+```
+
+**On Debian source VMs**:
+```bash
+sudo apt update
+sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-base \
+  gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
+  gstreamer1.0-plugins-ugly gstreamer1.0-libav
+```
+
+#### Remove NAT Adapters (After Package Installation)
+
+Once all packages are installed, remove the NAT adapters to return to the isolated environment:
+
+```cmd
+# Remove NAT from routers
+VBoxManage modifyvm "Router-R1" --nic3 none
+VBoxManage modifyvm "Router-R2" --nic3 none
+
+# Remove NAT from source VMs
+VBoxManage modifyvm "Source-1" --nic2 none
+VBoxManage modifyvm "Source-2" --nic2 none
+VBoxManage modifyvm "Source-3" --nic2 none
+```
+
+On Debian VMs, also remove the NAT interface configuration from `/etc/network/interfaces` to prevent errors on boot.
+
 ### Step 4: Configure OpenWRT Routers
 
 Start each router VM and configure via console.
@@ -476,29 +590,36 @@ Start each router VM and configure via console.
 
 ### Step 5: Setup Multicast Sources
 
-Install Ubuntu on each source VM, then configure static IP and install GStreamer.
+Install Debian on each source VM, then configure static IP and install GStreamer.
 
 #### Install and Configure Source-1
 
-1. **Install Ubuntu** on Source-1 VM through the VirtualBox GUI
+1. **Install Debian** on Source-1 VM through the VirtualBox GUI
 
-2. **Configure static IP** - Edit `/etc/netplan/01-netcfg.yaml`:
+2. **Configure static IP** - Edit `/etc/network/interfaces`:
 
-   ```yaml
-   network:
-     version: 2
-     ethernets:
-       enp0s3:
-         addresses:
-           - 192.168.1.10/24
-         gateway4: 192.168.1.1
-         nameservers:
-           addresses: [8.8.8.8, 8.8.4.4]
+   ```bash
+   sudo vi /etc/network/interfaces
    ```
 
-   Apply:
+   Add the following configuration:
+   ```
+   # Loopback interface
+   auto lo
+   iface lo inet loopback
+
+   # Primary network interface (source-network)
+   auto enp0s3
+   iface enp0s3 inet static
+       address 192.168.1.10
+       netmask 255.255.255.0
+       gateway 192.168.1.1
+       dns-nameservers 8.8.8.8 8.8.4.4
+   ```
+
+   Apply changes:
    ```bash
-   sudo netplan apply
+   sudo systemctl restart networking
    ```
 
 3. **Install GStreamer**:
@@ -897,6 +1018,88 @@ Should show multicast groups that the Windows client has joined.
    netstat -s -p udp
    ```
    Look for packet loss or errors
+
+### Issue 7: Package Installation Fails
+
+**Symptoms**: `opkg update` or `apt update` connection failures, unable to download packages
+
+**Solutions**:
+
+1. **Verify Internet connectivity**:
+   ```bash
+   # On OpenWRT routers
+   ping -c 4 8.8.8.8
+   
+   # On Debian VMs
+   ping -c 4 8.8.8.8
+   ```
+
+2. **Check NAT adapter attachment in VirtualBox**:
+   ```cmd
+   # Verify NAT adapter is attached
+   VBoxManage showvminfo "Router-R1" | findstr "NIC 3"
+   VBoxManage showvminfo "Source-1" | findstr "NIC 2"
+   ```
+
+3. **Verify WAN interface on OpenWRT**:
+   ```bash
+   # Check if eth2 (WAN interface) is up
+   ip addr show eth2
+   
+   # Check if DHCP obtained an IP
+   uci show network.wan
+   
+   # Restart network if needed
+   /etc/init.d/network restart
+   ```
+
+4. **Check network interfaces and routes on Debian**:
+   ```bash
+   # Check if NAT interface is up
+   ip addr show enp0s8
+   
+   # Check routing table
+   ip route show
+   
+   # Bring up interface if down
+   sudo ifup enp0s8
+   ```
+
+5. **Check DNS resolution**:
+   ```bash
+   # On OpenWRT
+   nslookup openwrt.org
+   
+   # On Debian
+   nslookup debian.org
+   ```
+   
+   If DNS fails, temporarily add DNS servers:
+   ```bash
+   # On OpenWRT
+   echo "nameserver 8.8.8.8" > /etc/resolv.conf
+   
+   # On Debian
+   echo "nameserver 8.8.8.8" | sudo tee -a /etc/resolv.conf
+   ```
+
+6. **Verify system time**:
+   ```bash
+   # Incorrect system time can cause SSL/TLS errors
+   date
+   
+   # Set time manually if needed (on OpenWRT)
+   date -s "2024-01-15 12:00:00"
+   ```
+
+7. **Test with alternative package sources**:
+   ```bash
+   # On OpenWRT, try different mirror
+   vi /etc/opkg/distfeeds.conf
+   # Change download.openwrt.org to another mirror
+   ```
+
+**Note**: Remember to remove NAT adapters after package installation is complete to return to the isolated simulation environment.
 
 ## Advanced Scenarios
 
