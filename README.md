@@ -1088,8 +1088,8 @@ Should show multicast groups that the Windows client has joined.
    # Incorrect system time can cause SSL/TLS errors
    date
    
-   # Set time manually if needed (on OpenWRT)
-   date -s "2024-01-15 12:00:00"
+   # Set time manually if needed (example format)
+   date -s "YYYY-MM-DD HH:MM:SS"
    ```
 
 7. **Test with alternative package sources**:
