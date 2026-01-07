@@ -245,7 +245,7 @@ VBoxManage modifyvm "Source-1" ^
 # Add storage controller
 VBoxManage storagectl "Source-1" --name "SATA" --add sata --controller IntelAhci
 
-# Attach Ubuntu ISO for installation
+# Attach Debian ISO for installation
 VBoxManage storageattach "Source-1" --storagectl "SATA" --port 1 --device 0 --type dvddrive --medium \path\to\debian.iso
 
 # Create virtual disk
