@@ -59,7 +59,7 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 |----------|---------|---------|----------|
 | **VirtualBox** | 6.1 or later | Virtualization platform | [virtualbox.org](https://www.virtualbox.org/wiki/Downloads) |
 | **OpenWRT** | 21.02 or later | Router operating system | [openwrt.org](https://openwrt.org/downloads) |
-| **Ubuntu/Debian** | 20.04+ | For source VMs | [ubuntu.com](https://ubuntu.com/download/desktop) |
+| **Debian** | 13+ | For source VMs | [debian.org](https://www.debian.org/) |
 | **VLC Media Player** | Latest | Video client on Windows | [videolan.org](https://www.videolan.org/vlc/download-windows.html) |
 
 ### Hardware Requirements
@@ -227,11 +227,13 @@ VBoxManage storageattach "Router-R2" --storagectl "SATA" --port 0 --device 0 --t
 
 #### Create Source VMs
 
-Create 3 Ubuntu VMs for multicast sources:
+Create 3 Debian VMs for multicast sources:
+
+Download the latest release of Debian.
 
 ```cmd
 # For each source (repeat for Source-1, Source-2, Source-3)
-VBoxManage createvm --name "Source-1" --ostype "Ubuntu_64" --register
+VBoxManage createvm --name "Source-1" --ostype "Debian_64" --register
 
 VBoxManage modifyvm "Source-1" ^
   --memory 2048 ^
@@ -244,7 +246,7 @@ VBoxManage modifyvm "Source-1" ^
 VBoxManage storagectl "Source-1" --name "SATA" --add sata --controller IntelAhci
 
 # Attach Ubuntu ISO for installation
-VBoxManage storageattach "Source-1" --storagectl "SATA" --port 1 --device 0 --type dvddrive --medium /path/to/ubuntu-20.04.iso
+VBoxManage storageattach "Source-1" --storagectl "SATA" --port 1 --device 0 --type dvddrive --medium \path\to\debian.iso
 
 # Create virtual disk
 VBoxManage createmedium disk --filename Source-1.vdi --size 20480
