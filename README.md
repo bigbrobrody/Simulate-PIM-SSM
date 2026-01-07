@@ -153,7 +153,7 @@ We'll use the SSM range **232.0.0.0/8** (standard SSM range):
 
 **Verify installation:**
 From a command prompt
-```bash
+```cmd
 VBoxManage --version
 ```
 
@@ -183,12 +183,12 @@ VBoxManage convertfromraw openwrt-21.02.3-x86-64-generic-ext4-combined.img openw
 VBoxManage createvm --name "Router-R1" --ostype "Linux26_64" --register
 
 # Configure VM
-VBoxManage modifyvm "Router-R1" \
-  --memory 256 \
-  --vram 16 \
-  --cpus 1 \
-  --nic1 intnet --intnet1 "source-network" \
-  --nic2 intnet --intnet2 "core-link1" \
+VBoxManage modifyvm "Router-R1" ^
+  --memory 256 ^
+  --vram 16 ^
+  --cpus 1 ^
+  --nic1 intnet --intnet1 "source-network" ^
+  --nic2 intnet --intnet2 "core-link1" ^
   --boot1 disk --boot2 none --boot3 none --boot4 none
 
 # Create and attach storage
