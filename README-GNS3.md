@@ -1,5 +1,7 @@
 # Simulate PIM-SSM Network for Video Testing
 
+The problem with the following is that GNS3 uses real network device images. This generally requires a paid for licence from the manufacturer. Cisco images available online will be pirate copies.
+
 This guide provides step-by-step instructions on how to simulate a PIM-SSM (Protocol Independent Multicast - Source-Specific Multicast) network using GNS3 in VirtualBox on Windows to test multicast video clients.
 
 ## Table of Contents
