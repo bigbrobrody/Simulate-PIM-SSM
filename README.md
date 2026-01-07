@@ -172,13 +172,13 @@ We'll create two OpenWRT router VMs (R1, R2).
 
 #### Convert to VirtualBox Format
 
-```bash
+```cmd
 VBoxManage convertfromraw openwrt-21.02.3-x86-64-generic-ext4-combined.img openwrt.vdi --format VDI
 ```
 
 #### Create Router R1
 
-```bash
+```cmd
 # Create VM
 VBoxManage createvm --name "Router-R1" --ostype "Linux26_64" --register
 
@@ -199,17 +199,17 @@ VBoxManage storageattach "Router-R1" --storagectl "SATA" --port 0 --device 0 --t
 
 #### Create Router R2
 
-```bash
+```cmd
 # Create VM
 VBoxManage createvm --name "Router-R2" --ostype "Linux26_64" --register
 
 # Configure VM
-VBoxManage modifyvm "Router-R2" \
-  --memory 256 \
-  --vram 16 \
-  --cpus 1 \
-  --nic1 intnet --intnet1 "core-link1" \
-  --nic2 hostonly --hostonlyadapter2 "VirtualBox Host-Only Ethernet Adapter" \
+VBoxManage modifyvm "Router-R2" ^
+  --memory 256 ^
+  --vram 16 ^
+  --cpus 1 ^
+  --nic1 intnet --intnet1 "core-link1" ^
+  --nic2 hostonly --hostonlyadapter2 "VirtualBox Host-Only Ethernet Adapter" ^
   --boot1 disk --boot2 none --boot3 none --boot4 none
 
 # Note: Replace "VirtualBox Host-Only Ethernet Adapter" with your actual adapter name
@@ -229,15 +229,15 @@ VBoxManage storageattach "Router-R2" --storagectl "SATA" --port 0 --device 0 --t
 
 Create 3 Ubuntu VMs for multicast sources:
 
-```bash
+```cmd
 # For each source (repeat for Source-1, Source-2, Source-3)
 VBoxManage createvm --name "Source-1" --ostype "Ubuntu_64" --register
 
-VBoxManage modifyvm "Source-1" \
-  --memory 2048 \
-  --vram 128 \
-  --cpus 2 \
-  --nic1 intnet --intnet1 "source-network" \
+VBoxManage modifyvm "Source-1" ^
+  --memory 2048 ^
+  --vram 128 ^
+  --cpus 2 ^
+  --nic1 intnet --intnet1 "source-network" ^
   --boot1 disk --boot2 dvd
 
 # Add storage controller
@@ -273,7 +273,7 @@ Start each router VM and configure via console.
 #### Router R1 Configuration (Core Router)
 
 1. **Start Router-R1 and access console**
-   ```bash
+   ```cmd
    VBoxManage startvm "Router-R1"
    ```
 
