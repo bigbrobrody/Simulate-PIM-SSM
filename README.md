@@ -16,7 +16,7 @@ This guide uses completely free and open-source software: **VirtualBox**, **Open
   - [Step 3: Configure Network Topology](#step-3-configure-network-topology)
   - [Step 4: Configure OpenWRT Routers](#step-4-configure-openwrt-routers)
   - [Step 5: Setup Multicast Sources](#step-5-setup-multicast-sources)
-  - [Step 6: Setup Video Client VMs](#step-6-setup-video-client-vms)
+  - [Step 6: Setup Video Client on Windows Host](#step-6-setup-video-client-on-windows-host)
 - [Testing and Verification](#testing-and-verification)
 - [Troubleshooting](#troubleshooting)
 - [Advanced Scenarios](#advanced-scenarios)
