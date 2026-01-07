@@ -359,6 +359,8 @@ On **each Debian source VM**, configure the NAT interface:
 
 Now you can install packages on all VMs:
 
+*** 7/1/2025 Stuck here because pimd and igmproxy are not available ***
+
 **On OpenWRT routers**:
 ```bash
 opkg update
