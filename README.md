@@ -315,6 +315,8 @@ On **Router-R1** and **Router-R2**, configure the WAN interface:
        option device 'eth2'
        option proto 'dhcp'
    ```
+   
+   **Note**: The interface name `eth2` corresponds to the third NIC in VirtualBox. Verify the actual interface name with `ip link show` if unsure.
 
 4. **Restart networking**:
    ```bash
@@ -338,6 +340,7 @@ On **each Debian source VM**, configure the NAT interface:
 2. **Add NAT interface configuration**:
    ```
    # NAT interface for Internet access (temporary)
+   # Note: Interface name may vary; use 'ip link show' to verify
    auto enp0s8
    iface enp0s8 inet dhcp
    ```
@@ -1089,7 +1092,7 @@ Should show multicast groups that the Windows client has joined.
    date
    
    # Set time manually if needed (example format)
-   date -s "YYYY-MM-DD HH:MM:SS"
+   date --set="YYYY-MM-DD HH:MM:SS"
    ```
 
 7. **Test with alternative package sources**:
