@@ -265,7 +265,7 @@ To allow the Windows host to communicate with the simulated network:
 
 1. Open VirtualBox Manager
 2. Go to **Network > Host-only Networks**
-3. Create a new host-only network (or use existing) with:
+3. Modify the configuration of the host-only network adapter used for router R2:
    - IPv4 Address: 192.168.2.1
    - IPv4 Network Mask: 255.255.255.0
    - DHCP Server: Disabled
