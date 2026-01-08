@@ -310,7 +310,8 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    
    Edit `/etc/network/interfaces`:
    ```bash
-   sudo vi /etc/network/interfaces
+   su [input root password set during install]
+   vi /etc/network/interfaces
    ```
 
    Configuration:
@@ -338,10 +339,16 @@ VBoxManage modifyvm "Source-3" --nic2 nat
 
    Apply changes:
    ```bash
-   sudo systemctl restart networking
+   systemctl restart networking
    ```
 
-3. **Enable IP forwarding**:
+   Install sysctl:
+   ```bash
+   apt install procps
+   ```
+   Doesn't help - still getting sysctl command not found
+
+4. **Enable IP forwarding**:
    ```bash
    sudo sysctl -w net.ipv4.ip_forward=1
    sudo sysctl -w net.ipv4.conf.all.mc_forwarding=1
@@ -351,7 +358,7 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    echo "net.ipv4.conf.all.mc_forwarding=1" | sudo tee -a /etc/sysctl.conf
    ```
 
-4. **Install FRRouting**:
+5. **Install FRRouting**:
    ```bash
    # Add FRRouting GPG key
    curl -s https://deb.frrouting.org/frr/keys.gpg | sudo tee /usr/share/keyrings/frrouting.gpg > /dev/null
@@ -364,7 +371,7 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    sudo apt install -y frr frr-pythontools
    ```
 
-5. **Enable PIM daemon**:
+6. **Enable PIM daemon**:
    
    Edit `/etc/frr/daemons`:
    ```bash
@@ -394,7 +401,7 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    pathd=no
    ```
 
-6. **Configure FRRouting**:
+7. **Configure FRRouting**:
    
    Edit `/etc/frr/frr.conf`:
    ```bash
@@ -428,7 +435,7 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    !
    ```
 
-7. **Set file permissions and restart FRRouting**:
+8. **Set file permissions and restart FRRouting**:
    ```bash
    sudo chown frr:frr /etc/frr/frr.conf
    sudo chmod 640 /etc/frr/frr.conf
@@ -436,7 +443,7 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    sudo systemctl enable frr
    ```
 
-8. **Add static route to client network**:
+9. **Add static route to client network**:
    ```bash
    sudo ip route add 192.168.2.0/24 via 10.0.1.2
    
