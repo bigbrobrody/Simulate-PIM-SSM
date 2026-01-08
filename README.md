@@ -311,7 +311,7 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    Edit `/etc/network/interfaces`:
    ```bash
    su [input root password set during install]
-   vi /etc/network/interfaces
+   nano /etc/network/interfaces
    ```
 
    Configuration:
@@ -342,16 +342,20 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    systemctl restart networking
    ```
 
-   Install sysctl:
+   Check network config:
    ```bash
-   apt install procps
+   ip a
    ```
-   Doesn't help - still getting sysctl command not found
+
+   Install other tools
+   ```bash
+   apt install curl
+   ```
 
 4. **Enable IP forwarding**:
    ```bash
    sudo sysctl -w net.ipv4.ip_forward=1
-   sudo sysctl -w net.ipv4.conf.all.mc_forwarding=1
+   sudo sysctl -w net.ipv4.conf.all.mc_forwarding=1 *** results in Operation not permitted
    
    # Make persistent
    echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
@@ -375,7 +379,7 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    
    Edit `/etc/frr/daemons`:
    ```bash
-   sudo vi /etc/frr/daemons
+   sudo nano /etc/frr/daemons
    ```
 
    Enable pimd:
@@ -405,7 +409,7 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    
    Edit `/etc/frr/frr.conf`:
    ```bash
-   sudo vi /etc/frr/frr.conf
+   sudo nano /etc/frr/frr.conf
    ```
 
    Configuration:
