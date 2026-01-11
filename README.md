@@ -168,6 +168,31 @@ We'll create two Debian router VMs (R1, R2) that will run FRRouting.
 2. Download the **netinst ISO** (small installation image)
 3. Save it to a convenient location
 
+For all Debian installations:
+Leave the root password blank and create a user 'vboxuser' with password 'vboxuser'.
+Make sure the NAT adapter is configured during installation to allow Internet access for package installation.
+Under "Software selection" only select "SSH server" and "standard system utilities".
+
+#### Alternative approach of using the VirtualBox GUI
+
+Note: This approach will result in a much larger debian installation due to the GUI install.
+
+**Create a new Debian VM using the VirtualBox GUI:**
+- Create a new VM
+- Set the VM name - e.g. Router-R1
+- Select the Debian iso
+- Tick unattended install (default after selecting the iso)
+- Leave root password blank
+- Set user password to vboxuser (same as username)
+- Select to install guest additions
+- Set RAM to 2048 MB
+- Set number of CPUs to 1
+- Set hard disk to 20 GB
+
+**Replicate for the other VMs:**
+- Clone the machine 2 times as Router-R2, Source-1
+- Amend each machine to have the network interfaces detailed below
+
 #### Create Router R1
 
 ```cmd
@@ -231,10 +256,9 @@ VBoxManage storageattach "Router-R2" --storagectl "SATA" --port 0 --device 0 --t
 
 #### Create Source VMs
 
-Create 3 Debian VMs for multicast sources:
+Create Debian VM for multicast sources (we will clone the VM later):
 
 ```cmd
-# For each source (repeat for Source-1, Source-2, Source-3)
 VBoxManage createvm --name "Source-1" --ostype "Debian_64" --register
 
 VBoxManage modifyvm "Source-1" ^
@@ -255,8 +279,6 @@ cd ..\Source-1
 VBoxManage createmedium disk --filename Source-1.vdi --size 20480
 VBoxManage storageattach "Source-1" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Source-1.vdi
 ```
-
-Repeat for Source-2 and Source-3, adjusting the names accordingly.
 
 #### Setup VirtualBox Host-Only Network
 
@@ -285,26 +307,40 @@ VBoxManage modifyvm "Router-R1" --nic3 nat
 VBoxManage modifyvm "Router-R2" --nic3 nat
 ```
 
-For Debian source VMs, add NAT adapter as second NIC:
+For Debian source VM, add NAT adapter as second NIC:
 
 ```cmd
-# Add NAT adapter to each source VM
+# Add NAT adapter to source VM
 VBoxManage modifyvm "Source-1" --nic2 nat
-VBoxManage modifyvm "Source-2" --nic2 nat
-VBoxManage modifyvm "Source-3" --nic2 nat
 ```
 
-**After installing all packages, remove the NAT adapters** to return to the isolated environment.
+#### Enable SSH access for easier management
+
+Using the GUI add port forwarding to allow SSH access to the routers from the host machine during setup:
+ - Host IP 127.0.0.1, host port 2222, guest port 22 for Router-R1
+ - Host IP 127.0.0.1, host port 2322, guest port 22 for Router-R2
+ - Host IP 127.0.0.1, host port 2422, guest port 22 for Source-1
+
+To connect from Windows use an SSH client such as PuTTY to connect to 127.0.0.1:2222
+
+#### Enable PAE/NX for each VM for better performance:
+
+```cmd
+VBoxManage modifyvm "Router-R1" --pae on
+VBoxManage modifyvm "Router-R2" --pae on
+VBoxManage modifyvm "Source-1" --pae on
+```
+
+#### Configure all hard disks as SSD (to match host)
+
+Use the GUI to set each VM's hard disk to be treated as SSD for better performance.
 
 ### Step 4: Configure FRRouting Routers
 
 #### Install Debian and FRRouting on Router R1
 
 1. **Install Debian** on Router-R1 VM:
-   - Start the VM and boot from the Debian ISO
-   - Follow the installation wizard
-   - When prompted for network configuration, skip or configure the NAT interface (enp0s9)
-   - Complete the installation and reboot
+   - See steps above for installation instructions.
 
 2. **Configure network interfaces**:
    
@@ -333,7 +369,8 @@ VBoxManage modifyvm "Source-3" --nic2 nat
        netmask 255.255.255.252
 
    # NAT interface (for package installation - remove later)
-   auto enp0s9
+   # auto enp0s9
+   allow-hotplug enp0s9
    iface enp0s9 inet dhcp
    ```
 
@@ -404,6 +441,7 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    vrrpd=no
    pathd=no
    ```
+   I added zebra=yes to enable the zebra daemon for interface management.
 
 7. **Configure FRRouting**:
    
@@ -433,7 +471,7 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    !
    ! PIM configuration for SSM
    router pim
-    !
+   !
    !
    line vty
    !
@@ -452,7 +490,7 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    sudo ip route add 192.168.2.0/24 via 10.0.1.2
    
    # Make persistent by adding to /etc/network/interfaces
-   sudo vi /etc/network/interfaces
+   sudo nano /etc/network/interfaces
    # Add under enp0s8 interface:
    #    up ip route add 192.168.2.0/24 via 10.0.1.2
    ```
@@ -465,7 +503,7 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    
    Edit `/etc/network/interfaces`:
    ```bash
-   sudo vi /etc/network/interfaces
+   sudo nano /etc/network/interfaces
    ```
 
    Configuration:
@@ -488,7 +526,8 @@ VBoxManage modifyvm "Source-3" --nic2 nat
        netmask 255.255.255.0
 
    # NAT interface (for package installation - remove later)
-   auto enp0s9
+   # auto enp0s9
+   allow-hotplug enp0s9
    iface enp0s9 inet dhcp
    ```
 
@@ -499,6 +538,8 @@ VBoxManage modifyvm "Source-3" --nic2 nat
 
 3. **Enable IP forwarding** (same as R1)
 
+Disabling other adapters gets Internet access working.
+
 4. **Install FRRouting** (same as R1)
 
 5. **Enable PIM daemon** (same as R1)
@@ -507,7 +548,7 @@ VBoxManage modifyvm "Source-3" --nic2 nat
    
    Edit `/etc/frr/frr.conf`:
    ```bash
-   sudo vi /etc/frr/frr.conf
+   sudo nano /etc/frr/frr.conf
    ```
 
    Configuration:
@@ -547,6 +588,9 @@ VBoxManage modifyvm "Source-3" --nic2 nat
 
 #### Remove NAT Adapters (After Package Installation)
 
+Should be able to just remove cables from NAT adapters in VirtualBox GUI.
+Might be better to disable the adapters.
+
 Once all packages are installed on both routers, remove the NAT adapters:
 
 ```cmd
@@ -556,6 +600,7 @@ VBoxManage modifyvm "Router-R2" --nic3 none
 ```
 
 Also remove the NAT interface configuration from `/etc/network/interfaces` on both routers.
+
 
 ### Step 5: Setup Multicast Sources
 
@@ -568,7 +613,7 @@ Install Debian on each source VM, then configure static IP and install GStreamer
 2. **Configure static IP** - Edit `/etc/network/interfaces`:
 
    ```bash
-   sudo vi /etc/network/interfaces
+   sudo nano /etc/network/interfaces
    ```
 
    Configuration:
@@ -586,7 +631,7 @@ Install Debian on each source VM, then configure static IP and install GStreamer
        dns-nameservers 8.8.8.8 8.8.4.4
 
    # NAT interface (for package installation - remove later)
-   auto enp0s8
+   allow-hotplug enp0s8
    iface enp0s8 inet dhcp
    ```
 
@@ -598,151 +643,209 @@ Install Debian on each source VM, then configure static IP and install GStreamer
 3. **Install GStreamer**:
 
    ```bash
+   ping -c 4 www.bbc.co.uk
    sudo apt update
    sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-base \
      gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
      gstreamer1.0-plugins-ugly gstreamer1.0-libav
    ```
 
-4. **Create streaming script** - Create `/home/user/stream.sh`:
+4. **Create streaming script** - Create `/usr/local/bin/stream.sh`:
+
+   ```bash
+   sudo nano /usr/local/bin/stream.sh
+   ```
 
    ```bash
    #!/bin/bash
    # Stream test pattern 1 to 232.1.1.1:5000
    gst-launch-1.0 -v \
-     videotestsrc pattern=smpte horizontal-speed=1 ! \
-     video/x-raw,width=1280,height=720,framerate=30/1 ! \
-     textoverlay text="Source 1 - SMPTE Bars" valignment=top halignment=left font-desc="Sans, 32" ! \
-     x264enc tune=zerolatency bitrate=2000 speed-preset=superfast ! \
-     mpegtsmux ! \
-     udpsink host=232.1.1.1 port=5000 auto-multicast=true ttl-mc=5
+       videotestsrc is-live=true pattern=smpte horizontal-speed=1 ! \
+       video/x-raw,width=720,height=576,framerate=25/1 ! \
+       textoverlay text="Source 1 - SMPTE Bars" valignment=top halignment=left font-desc="Sans, 32" ! \
+       x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
+       video/x-h264,profile=baseline ! \
+       rtph264pay config-interval=1 pt=96 ! \
+       udpsink host=232.1.1.1 port=5000 auto-multicast=true ttl-mc=5
    ```
 
    Make executable:
    ```bash
-   chmod +x /home/user/stream.sh
+   chmod +x /usr/local/bin/stream.sh
    ```
 
 5. **Test the stream**:
    ```bash
-   ./stream.sh
+   /usr/local/bin/stream.sh
    ```
 
-6. **Remove NAT adapter** after package installation:
+6. Make the stream start on boot
+
+    Create service file:
+    ```bash
+    sudo nano /etc/systemd/system/stream.service
+    ```
+
+    Add:
+    ```bash
+    [Unit]
+    Description=Multicast RTP test stream
+    After=network.target
+
+    [Service]
+    Type=simple
+    ExecStart=/usr/local/bin/stream.sh
+    Restart=on-failure
+    User=root
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+
+    Enable and start the service:
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable stream.service
+    sudo systemctl start stream.service
+    ```
+
+    Check status and logs:
+    ```bash
+    sudo systemctl status stream.service
+    sudo journalctl -u stream.service -b
+    ```
+
+    Note: The stream might fail if adapter 1 is disabled because GStreamer cannot join the multicast group.
+
+7. Check on the host machine, with NAT adapter still present, that the stream is being sent.
+
    ```cmd
-   VBoxManage modifyvm "Source-1" --nic2 none
+   gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.1 multicast-source=192.168.1.10 caps="application/x-rtp" ! rtph264depay ! decodebin ! autovideosink
    ```
+
+8. **Disable NAT adapter** after package installation:
+
+   Shutdown the VM:
+   ```bash
+   sudo poweroff
+   ```
+
+   Finalise:
+   - Disable NAT adapter 2 in VirtualBox GUI.
+   - Enable network adapter 1 (source-network).
+   - Start the VM.
 
 #### Configure Source-2 and Source-3
 
-Repeat the above for Source-2 (192.168.1.11) and Source-3 (192.168.1.12), but use different patterns and multicast addresses:
+Clone the Source-1 VM in the VirtualBox GUI as Source-2.
 
-**Source-2 stream script** (`232.1.1.2`):
+Clone the Source-1 VM in the VirtualBox GUI as Source-3.
+
+In each new VM disable network adapter 1 and enable network adapter 2 (NAT).
+
+Change the Source-2 NAT adapter port forwarding host port to 2522.
+
+Change the Source-2 NAT adapter port forwarding host port to 2622.
+
+Boot each new VM in turn.
+
+**Source-2**:
+
+SSH into the machine using 127.0.0.1:2522
+
+```bash
+sudo nano /etc/network/interfaces
+```
+
+Update static IP address to 192.168.1.11
+
+Update stream script:
+
+```bash
+sudo nano /usr/local/bin/stream.sh
+```
+
 ```bash
 #!/bin/bash
 gst-launch-1.0 -v \
-  videotestsrc pattern=snow horizontal-speed=2 ! \
-  video/x-raw,width=1280,height=720,framerate=30/1 ! \
-  textoverlay text="Source 2 - Snow Pattern" valignment=top halignment=left font-desc="Sans, 32" ! \
-  x264enc tune=zerolatency bitrate=2000 speed-preset=superfast ! \
-  mpegtsmux ! \
-  udpsink host=232.1.1.2 port=5000 auto-multicast=true ttl-mc=5
+    videotestsrc is-live=true pattern=snow horizontal-speed=2 ! \
+    video/x-raw,width=720,height=576,framerate=25/1 ! \
+    textoverlay text="Source 2 - Snow Pattern" valignment=top halignment=left font-desc="Sans, 32" ! \
+    x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
+    video/x-h264,profile=baseline ! \
+    rtph264pay config-interval=1 pt=96 ! \
+    udpsink host=232.1.1.2 port=5000 auto-multicast=true ttl-mc=5
 ```
 
-**Source-3 stream script** (`232.1.1.3`):
+Shutdown the VM:
+```bash
+sudo poweroff
+```
+
+Finalise:
+- Disable NAT adapter 2 in VirtualBox GUI.
+- Enable network adapter 1 (source-network).
+- Start the VM.
+
+**Source-3**:
+
+SSH into the machine using 127.0.0.1:2622
+
+```bash
+sudo nano /etc/network/interfaces
+```
+
+Update static IP address to 192.168.1.12
+
+Update stream script:
+
+```bash
+sudo nano /usr/local/bin/stream.sh
+```
+
 ```bash
 #!/bin/bash
 gst-launch-1.0 -v \
-  videotestsrc pattern=circular horizontal-speed=3 ! \
-  video/x-raw,width=1280,height=720,framerate=30/1 ! \
-  textoverlay text="Source 3 - Circular" valignment=top halignment=left font-desc="Sans, 32" ! \
-  x264enc tune=zerolatency bitrate=2000 speed-preset=superfast ! \
-  mpegtsmux ! \
-  udpsink host=232.1.1.3 port=5000 auto-multicast=true ttl-mc=5
+    videotestsrc is-live=true pattern=circular horizontal-speed=2 ! \
+    video/x-raw,width=720,height=576,framerate=25/1 ! \
+    textoverlay text="Source 3 - H265 Circular" valignment=top halignment=left font-desc="Sans, 32" ! \
+    x265enc tune=zerolatency bitrate=2000 speed-preset=superfast key-int-max=2 ! \
+    video/x-h265,profile=main ! \
+    rtph265pay config-interval=1 pt=96 ! \
+    udpsink host=232.1.1.3 port=5000 auto-multicast=true ttl-mc=5
 ```
 
-Remove NAT adapters from Source-2 and Source-3 as well after package installation.
-
-#### Create Systemd Service (Optional)
-
-To auto-start streams on boot:
-
+Shutdown the VM:
 ```bash
-sudo vi /etc/systemd/system/multicast-stream.service
+sudo poweroff
 ```
 
-```ini
-[Unit]
-Description=Multicast Video Stream
-After=network.target
-
-[Service]
-Type=simple
-User=yourusername
-ExecStart=/home/yourusername/stream.sh
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable:
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable multicast-stream.service
-sudo systemctl start multicast-stream.service
-```
+Finalise:
+- Disable NAT adapter 2 in VirtualBox GUI.
+- Enable network adapter 1 (source-network).
+- Start the VM.
 
 ### Step 6: Setup Video Client on Windows Host
 
 The video client runs directly on your Windows host computer.
 
-#### Configure Windows Network
+#### Install GStreamer
 
-1. **Open Network Connections**:
-   - Press `Win + R`, type `ncpa.cpl`, and press Enter
-   - Find the VirtualBox Host-Only Network adapter
+1. **Download GStreamer**:
+   - Visit [https://gstreamer.freedesktop.org/download/#windows](https://gstreamer.freedesktop.org/download/#windows)
+   - Download the latest 64-bit runtime installer
 
-2. **Configure Static IP**:
-   - Right-click the adapter → Properties
-   - Select "Internet Protocol Version 4 (TCP/IPv4)" → Properties
-   - Set:
-     - IP address: `192.168.2.1`
-     - Subnet mask: `255.255.255.0`
-     - Default gateway: `192.168.2.254`
-   - Click OK
-
-3. **Verify connectivity**:
-   ```cmd
-   ping 192.168.2.254
-   ```
-
-#### Install VLC Media Player
-
-1. **Download VLC**:
-   - Visit [https://www.videolan.org/vlc/download-windows.html](https://www.videolan.org/vlc/download-windows.html)
-   - Download the latest 64-bit installer
-
-2. **Install VLC**:
+2. **Install GStreamer**:
    - Run the installer
    - Follow the installation wizard
 
-#### Test Receiving Multicast Stream
+#### Open the streams with GStreamer
 
-1. **Open VLC Media Player**
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.1 multicast-source=192.168.1.10 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.2 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.3 multicast-source=192.168.1.12 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph265depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
-2. **Open Network Stream**:
-   - Go to **Media > Open Network Stream** (or press `Ctrl+N`)
-   - Enter the multicast address:
-     - For Source 1: `udp://@232.1.1.1:5000`
-     - For Source 2: `udp://@232.1.1.2:5000`
-     - For Source 3: `udp://@232.1.1.3:5000`
-   - Click **Play**
-
-3. **Create a playlist** for easy switching:
-   - Go to **Media > Open Multiple Files**
-   - Add each multicast address
-   - Set caching to 300ms or higher
+Note: VLC is unable to decode H264 and H265 without SDP information.
 
 #### Troubleshooting Windows Firewall
 
@@ -796,13 +899,12 @@ sudo tcpdump -i enp0s3 dst host 232.1.1.1 or dst host 232.1.1.2 or dst host 232.
 ### Test Client Reception
 
 1. Start streaming on all source VMs
-2. Open VLC on Windows host
-3. Subscribe to each multicast group
-4. Verify video playback
+2. Use GStreamer to receieve video from each multicast group
+3. Verify video playback
 
 ### Verify Source-Specific Multicast
 
-Use Wireshark on Windows to verify IGMPv3 SOURCE records are being sent when you start playing a stream in VLC.
+Use Wireshark on Windows to verify IGMPv3 SOURCE records are being sent when you start playing a stream.
 
 ## Troubleshooting
 
@@ -873,6 +975,14 @@ Use Wireshark on Windows to verify IGMPv3 SOURCE records are being sent when you
    ```
 
 4. **Increase VLC network caching** (300-1000ms)
+
+### Issue 4: Guest machine not able to reach internet
+
+**Solutions**:
+
+In VirtualBox GUI, with the machine powered off, disable all except the NAT adapter.
+
+If DNS fails, make sure the host DNS settings are correct and disable use of PiHole. 
 
 ## Advanced Scenarios
 
