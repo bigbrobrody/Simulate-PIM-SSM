@@ -842,7 +842,9 @@ The video client runs directly on your Windows host computer.
 #### Open the streams with GStreamer
 
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.1 multicast-source=192.168.1.10 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.2 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.3 multicast-source=192.168.1.12 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph265depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
 Note: VLC is unable to decode H264 and H265 without SDP information.
