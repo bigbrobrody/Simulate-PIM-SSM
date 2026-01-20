@@ -720,7 +720,7 @@ Install Debian on each source VM, then configure static IP and install GStreamer
 7. Check on the host machine, with NAT adapter still present, that the stream is being sent.
 
    ```cmd
-   gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.1 multicast-source=192.168.1.10 caps="application/x-rtp" ! rtph264depay ! decodebin ! autovideosink
+   gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.1 multicast-source=192.168.1.10 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
    ```
 
 8. **Disable NAT adapter** after package installation:
@@ -994,6 +994,8 @@ Clone Source-1 VM naming it Sources and selecting to generate all new MAC addres
 
 Start the VM and:
 
+NOT NECESSARY AND DIDN'T WORK - configure all sources to use the same source IP, but different multicast groups.
+
 ```bash
 sudo nano /etc/network/interfaces
 ```
@@ -1035,6 +1037,25 @@ allow-hotplug enp0s8
 iface enp0s8 inet dhcp
 ```
 
+Check the network configuration:
+
+```bash
+ip a
+```
+
+Enable the CD drive in the VM settings and point it to the Guest Additions ISO located in the VirtualBox installation folder (e.g. C:\Program Files\Oracle\VirtualBox\VBoxGuestAdditions.iso).
+
+Enable the NAT adapter as second NIC for package installation.
+
+Once loaded in the VM, install guest additions:
+
+```bash
+sudo apt update
+sudo apt install -y build-essential dkms linux-headers-$(uname -r)
+sudo mount /dev/cdrom /mnt
+sudo /mnt/VBoxLinuxAdditions.run
+```
+
 Use VirtualBox manager to add a maximum of 10 number h264 raw video captures to the folder /usr/local/bin/video
 
 Edit the streaming script to start multiple instances of GStreamer:
@@ -1050,7 +1071,7 @@ sudo nano /usr/local/bin/stream.sh
 VIDEO_DIR="/usr/local/bin/videos"
 
 # Starting IP address and multicast group
-IP_BASE="192.168.1"
+IP_BASE="192.168.1.10"
 MCAST_BASE="232.1.1"
 START_INDEX=10
 PORT=5000
@@ -1090,27 +1111,44 @@ fi
 
 echo "Found ${#MKV_FILES[@]} MKV file(s)"
 
+# Function to stream a single file with seamless looping
+stream_file() {
+    local MKV_FILE="$1"
+    local SOURCE_IP="$2"
+    local MCAST_ADDR="$3"
+    local PORT="$4"
+    
+    # Infinite loop to restart stream when it ends
+    while true; do
+        gst-launch-1.0 -q \
+            filesrc location="$MKV_FILE" ! \
+            matroskademux ! \
+            h264parse ! \
+            rtph264pay config-interval=2 pt=96 mtu=1400 ! \
+            udpsink host="$MCAST_ADDR" port="$PORT" \
+            bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
+            buffer-size=262144 sync=true
+        
+        # Brief pause before restarting (adjust if needed)
+        sleep 0.05
+    done
+}
+
 # Start a stream for each MKV file
 INDEX=$START_INDEX
 for MKV_FILE in "${MKV_FILES[@]}"; do
-    SOURCE_IP="${IP_BASE}.${INDEX}"
+    SOURCE_IP="${IP_BASE}"
     MCAST_ADDR="${MCAST_BASE}.${INDEX}"
     FILENAME=$(basename "$MKV_FILE")
     
-    echo "Starting stream $((INDEX - START_INDEX + 1)): $FILENAME"
+    echo "Starting looping stream $((INDEX - START_INDEX + 1)): $FILENAME"
     echo "  Source IP: $SOURCE_IP"
     echo "  Multicast: $MCAST_ADDR:$PORT"
     
-    # Simple H.264 remux pipeline (no re-encoding)
-    gst-launch-1.0 -v \
-        filesrc location="$MKV_FILE" ! \
-        matroskademux ! \
-        h264parse ! \
-        rtph264pay config-interval=-1 pt=96 ! \
-        udpsink host="$MCAST_ADDR" port="$PORT" \
-        multicast-interface="$SOURCE_IP" auto-multicast=true ttl-mc=5 &
+    # Start stream in background with seamless looping
+    stream_file "$MKV_FILE" "$SOURCE_IP" "$MCAST_ADDR" "$PORT" &
     
-    # Store the PID for potential cleanup
+    # Store the PID for cleanup
     echo $! >> "$PID_FILE"
     
     # Increment for next stream
@@ -1120,7 +1158,7 @@ for MKV_FILE in "${MKV_FILES[@]}"; do
     sleep 1
 done
 
-echo "All streams started. PIDs stored in $PID_FILE"
+echo "All streams started with seamless looping. PIDs stored in $PID_FILE"
 echo "Service is running. Press Ctrl+C to stop all streams."
 
 # Keep script running to maintain streams
