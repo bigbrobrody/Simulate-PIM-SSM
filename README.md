@@ -994,54 +994,54 @@ Clone Source-1 VM naming it Sources and selecting to generate all new MAC addres
 
 Start the VM and:
 
-   ```bash
-   sudo nano /etc/network/interfaces
-   ```
+```bash
+sudo nano /etc/network/interfaces
+```
 
-   ```bash
-   # Loopback interface
-   auto lo
-   iface lo inet loopback
+```bash
+# Loopback interface
+auto lo
+iface lo inet loopback
 
-   # Primary network interface (source-network)
-   auto enp0s3
-   iface enp0s3 inet static
-       address 192.168.1.10/24
-       netmask 255.255.255.0
-       gateway 192.168.1.1
-       dns-nameservers 8.8.8.8 8.8.4.4
+# Primary network interface (source-network)
+auto enp0s3
+iface enp0s3 inet static
+    address 192.168.1.10/24
+    netmask 255.255.255.0
+    gateway 192.168.1.1
+    dns-nameservers 8.8.8.8 8.8.4.4
 
-   iface enp0s3 inet static
-       address 192.168.1.11/24
-   iface enp0s3 inet static
-       address 192.168.1.12/24
-   iface enp0s3 inet static
-       address 192.168.1.13/24
-   iface enp0s3 inet static
-       address 192.168.1.14/24
-   iface enp0s3 inet static
-       address 192.168.1.15/24
-   iface enp0s3 inet static
-       address 192.168.1.16/24
-   iface enp0s3 inet static
-       address 192.168.1.17/24
-   iface enp0s3 inet static
-       address 192.168.1.18/24
-   iface enp0s3 inet static
-       address 192.168.1.19/24
+iface enp0s3 inet static
+    address 192.168.1.11/24
+iface enp0s3 inet static
+    address 192.168.1.12/24
+iface enp0s3 inet static
+    address 192.168.1.13/24
+iface enp0s3 inet static
+    address 192.168.1.14/24
+iface enp0s3 inet static
+    address 192.168.1.15/24
+iface enp0s3 inet static
+    address 192.168.1.16/24
+iface enp0s3 inet static
+    address 192.168.1.17/24
+iface enp0s3 inet static
+    address 192.168.1.18/24
+iface enp0s3 inet static
+    address 192.168.1.19/24
 
-   # NAT interface (for package installation - remove later)
-   allow-hotplug enp0s8
-   iface enp0s8 inet dhcp
-   ```
+# NAT interface (for package installation - remove later)
+allow-hotplug enp0s8
+iface enp0s8 inet dhcp
+```
 
 Use VirtualBox manager to add a maximum of 10 number h264 raw video captures to the folder /usr/local/bin/video
 
 Edit the streaming script to start multiple instances of GStreamer:
 
-   ```bash
-   sudo nano /usr/local/bin/stream.sh
-   ```
+```bash
+sudo nano /usr/local/bin/stream.sh
+```
 
 ```bash
 #!/bin/bash
