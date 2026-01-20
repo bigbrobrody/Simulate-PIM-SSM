@@ -986,6 +986,145 @@ If DNS fails, make sure the host DNS settings are correct and disable use of PiH
 
 ## Advanced Scenarios
 
+### Create mulitiple sources on one VM
+
+Clone Source-1 VM naming it Sources and selecting to generate all new MAC addresses.
+
+Start the VM and:
+
+   ```bash
+   sudo nano /etc/network/interfaces
+   ```
+
+   ```bash
+   # Loopback interface
+   auto lo
+   iface lo inet loopback
+
+   # Primary network interface (source-network)
+   auto enp0s3
+   iface enp0s3 inet static
+       address 192.168.1.10/24
+       netmask 255.255.255.0
+       gateway 192.168.1.1
+       dns-nameservers 8.8.8.8 8.8.4.4
+
+   iface enp0s3 inet static
+       address 192.168.1.11/24
+   iface enp0s3 inet static
+       address 192.168.1.12/24
+   iface enp0s3 inet static
+       address 192.168.1.13/24
+   iface enp0s3 inet static
+       address 192.168.1.14/24
+   iface enp0s3 inet static
+       address 192.168.1.15/24
+   iface enp0s3 inet static
+       address 192.168.1.16/24
+   iface enp0s3 inet static
+       address 192.168.1.17/24
+   iface enp0s3 inet static
+       address 192.168.1.18/24
+   iface enp0s3 inet static
+       address 192.168.1.19/24
+
+   # NAT interface (for package installation - remove later)
+   allow-hotplug enp0s8
+   iface enp0s8 inet dhcp
+   ```
+
+Use VirtualBox manager to add a maximum of 10 number h264 raw video captures to the folder /usr/local/bin/video
+
+Edit the streaming script to start multiple instances of GStreamer:
+
+   ```bash
+   sudo nano /usr/local/bin/stream.sh
+   ```
+
+```bash
+#!/bin/bash
+
+# Directory containing MKV files
+VIDEO_DIR="/usr/local/bin/videos"
+
+# Starting IP address and multicast group
+IP_BASE="192.168.1"
+MCAST_BASE="232.1.1"
+START_INDEX=10
+PORT=5000
+
+# PID file location
+PID_FILE="/var/run/gstreamer_pids.txt"
+
+# Function to cleanup existing streams
+cleanup_streams() {
+    if [ -f "$PID_FILE" ]; then
+        echo "Cleaning up existing streams..."
+        while read -r pid; do
+            if ps -p "$pid" > /dev/null 2>&1; then
+                echo "  Killing process $pid"
+                kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null
+            fi
+        done < "$PID_FILE"
+        rm -f "$PID_FILE"
+        echo "Cleanup complete. Waiting for processes to terminate..."
+        sleep 2
+    fi
+}
+
+# Trap signals to cleanup on exit
+trap 'cleanup_streams; exit' SIGTERM SIGINT
+
+# Cleanup any existing streams from previous runs
+cleanup_streams
+
+# Get list of MKV files
+mapfile -t MKV_FILES < <(find "$VIDEO_DIR" -name "*.mkv" | sort)
+
+if [ ${#MKV_FILES[@]} -eq 0 ]; then
+    echo "No MKV files found in $VIDEO_DIR"
+    exit 1
+fi
+
+echo "Found ${#MKV_FILES[@]} MKV file(s)"
+
+# Start a stream for each MKV file
+INDEX=$START_INDEX
+for MKV_FILE in "${MKV_FILES[@]}"; do
+    SOURCE_IP="${IP_BASE}.${INDEX}"
+    MCAST_ADDR="${MCAST_BASE}.${INDEX}"
+    FILENAME=$(basename "$MKV_FILE")
+    
+    echo "Starting stream $((INDEX - START_INDEX + 1)): $FILENAME"
+    echo "  Source IP: $SOURCE_IP"
+    echo "  Multicast: $MCAST_ADDR:$PORT"
+    
+    # Simple H.264 remux pipeline (no re-encoding)
+    gst-launch-1.0 -v \
+        filesrc location="$MKV_FILE" ! \
+        matroskademux ! \
+        h264parse ! \
+        rtph264pay config-interval=-1 pt=96 ! \
+        udpsink host="$MCAST_ADDR" port="$PORT" \
+        multicast-interface="$SOURCE_IP" auto-multicast=true ttl-mc=5 &
+    
+    # Store the PID for potential cleanup
+    echo $! >> "$PID_FILE"
+    
+    # Increment for next stream
+    ((INDEX++))
+    
+    # Small delay to avoid startup race conditions
+    sleep 1
+done
+
+echo "All streams started. PIDs stored in $PID_FILE"
+echo "Service is running. Press Ctrl+C to stop all streams."
+
+# Keep script running to maintain streams
+wait
+```
+
 ### Add More Routers
 
 You can extend the topology by adding more routers running FRRouting. Simply:
