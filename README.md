@@ -69,7 +69,7 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 - **CPU**: Modern multi-core processor (4+ cores recommended)
 - **RAM**: Minimum 8GB (12GB recommended)
   - Each router VM: ~1GB
-  - Each Debian source VM: ~2GB
+  - Debian source VM: ~2GB
   - Windows host overhead: ~2-4GB
 - **Disk Space**: 40GB free space
 - **Network**: Internet connection for initial setup
@@ -83,44 +83,48 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 ## Architecture Overview
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                  Windows Host Computer                       │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │           VirtualBox Virtual Machines                  │  │
-│  │                                                        │  │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │  │
-│  │  │  Source VM 1 │  │  Source VM 2 │  │  Source VM 3 │  │  │
-│  │  │  GStreamer   │  │  GStreamer   │  │  GStreamer   │  │  │
-│  │  │  192.168.1.10│  │  192.168.1.11│  │  192.168.1.12│  │  │
-│  │  └──────┬───────┘  └───────┬──────┘  └────────┬─────┘  │  │
-│  │         │                  │                  │        │  │
-│  │         └──────────────────┴──────────────────┘        │  │
-│  │                            │                           │  │
-│  │                    ┌───────┴────────┐                  │  │
-│  │                    │   Router R1    │                  │  │
-│  │                    │  Debian + FRR  │                  │  │
-│  │                    │  PIM-SM (SSM)  │                  │  │
-│  │                    └───────┬────────┘                  │  │
-│  │                            │                           │  │
-│  │                    ┌───────┴────────┐                  │  │
-│  │                    │   Router R2    │                  │  │
-│  │                    │  Debian + FRR  │                  │  │
-│  │                    │  PIM-SM (SSM)  │                  │  │
-│  │                    └───────┬────────┘                  │  │
-│  │                            │                           │  │
-│  └────────────────────────────┼───────────────────────────┘  │
-│                               │                              │
-│                               │ (Host-Only Network)          │
-│                               │ 192.168.2.0/24               │
-│                               │                              │
-│                      ┌────────┴─────────┐                    │
-│                      │  Windows Client  │                    │
-│                      │   VLC Player     │                    │
-│                      │   192.168.2.1    │                    │
-│                      └──────────────────┘                    │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│                  Windows Host Computer                        │
+│                                                               │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │           VirtualBox Virtual Machines                   │  │
+│  │                                                         │  │
+│  │  ┌───────────────────────────────────────────────────┐  │  │
+│  │  │                    Sources VM                     │  │  │
+│  │  │               GStreamer, MKV files                │  │  │
+│  │  │192.168.1.11 192.168.1.12 192.168.1.13 192.168.1.14│  │  │
+│  │  └──────┬────────────┬────────────┬───────────┬──────┘  │  │
+│  │         │            │            │           │         │  │
+│  │         └────────────┴─────┬──────┴───────────┘         │  │
+│  │                            │                            │  │
+│  │                    ┌───────┴────────┐                   │  │
+│  │                    │  192.168.1.1   │                   │  │
+│  │                    │   Router R1    │                   │  │
+│  │                    │  Debian + FRR  │                   │  │
+│  │                    │  PIM-SM (SSM)  │                   │  │
+│  │                    │    10.0.1.1    │                   │  │
+│  │                    └───────┬────────┘                   │  │
+│  │                            │                            │  │
+│  │                    ┌───────┴────────┐                   │  │
+│  │                    │    10.0.1.2    │                   │  │
+│  │                    │   Router R2    │                   │  │
+│  │                    │  Debian + FRR  │                   │  │
+│  │                    │  PIM-SM (SSM)  │                   │  │
+│  │                    │  192.168.2.254 │                   │  │
+│  │                    └───────┬────────┘                   │  │
+│  │                            │                            │  │
+│  └────────────────────────────┼────────────────────────────┘  │
+│                               │                               │
+│                               │ (Host-Only Network)           │
+│                               │ 192.168.2.0/24                │
+│                               │                               │
+│                      ┌────────┴─────────┐                     │
+│                      │  Windows Client  │                     │
+│                      │   VLC Player     │                     │
+│                      │   192.168.2.1    │                     │
+│                      └──────────────────┘                     │
+│                                                               │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ## Network Topology
@@ -139,9 +143,10 @@ We'll use the SSM range **232.0.0.0/8** (standard SSM range):
 
 | Source | IP Address | Multicast Group | Port | Content |
 |--------|------------|-----------------|------|---------|
-| Source 1 | 192.168.1.10 | 232.1.1.1 | 5000 | Test Pattern 1 |
-| Source 2 | 192.168.1.11 | 232.1.1.2 | 5000 | Test Pattern 2 |
-| Source 3 | 192.168.1.12 | 232.1.1.3 | 5000 | Test Pattern 3 |
+| Source 1 | 192.168.1.11 | 232.1.1.11 | 5000 | Test Pattern 1 |
+| Source 2 | 192.168.1.12 | 232.1.1.12 | 5000 | Test Pattern 2 |
+| Source 3 | 192.168.1.13 | 232.1.1.13 | 5000 | Test Pattern 3 |
+| Sources 4-x | 192.168.1.14 | 232.1.1.14-x | 5000 | MKV files |
 
 ## Setup Instructions
 
@@ -206,7 +211,9 @@ VBoxManage modifyvm "Router-R1" ^
   --cpus 1 ^
   --nic1 intnet --intnet1 "source-network" ^
   --nic2 intnet --intnet2 "core-link1" ^
-  --boot1 disk --boot2 dvd
+  --nic3 nat ^
+  --boot1 disk --boot2 dvd ^
+  --pae on
 
 # Add storage controller
 VBoxManage storagectl "Router-R1" --name "SATA" --add sata --controller IntelAhci
@@ -233,7 +240,9 @@ VBoxManage modifyvm "Router-R2" ^
   --cpus 1 ^
   --nic1 intnet --intnet1 "core-link1" ^
   --nic2 hostonly --hostonlyadapter2 "VirtualBox Host-Only Ethernet Adapter" ^
-  --boot1 disk --boot2 dvd
+  --nic3 nat ^
+  --boot1 disk --boot2 dvd ^
+  --pae on
 
 # Note: Replace "VirtualBox Host-Only Ethernet Adapter" with your actual adapter name
 # Use 'VBoxManage list hostonlyifs' to see available host-only adapters
@@ -254,30 +263,35 @@ VBoxManage storageattach "Router-R2" --storagectl "SATA" --port 0 --device 0 --t
 
 ### Step 3: Configure Network Topology
 
-#### Create Source VMs
+#### Create Sources VM
 
-Create Debian VM for multicast sources (we will clone the VM later):
+Create Debian VM for multicast sources:
 
 ```cmd
-VBoxManage createvm --name "Source-1" --ostype "Debian_64" --register
+VBoxManage createvm --name "Sources" --ostype "Debian_64" --register
 
-VBoxManage modifyvm "Source-1" ^
+VBoxManage modifyvm "Sources" ^
   --memory 2048 ^
   --vram 128 ^
   --cpus 2 ^
-  --nic1 intnet --intnet1 "source-network" --nictype1 virtio ^
-  --boot1 disk --boot2 dvd
+  --nic1 intnet --intnet1 "source-network-1" --nictype1 virtio ^
+  --nic2 intnet --intnet2 "source-network-2" --nictype2 virtio ^
+  --nic3 intnet --intnet3 "source-network-3" --nictype3 virtio ^
+  --nic4 intnet --intnet4 "source-network-4" --nictype4 virtio ^
+  --nic5 nat ^
+  --boot1 disk --boot2 dvd ^
+  --pae on
 
 # Add storage controller
-VBoxManage storagectl "Source-1" --name "SATA" --add sata --controller IntelAhci
+VBoxManage storagectl "Sources" --name "SATA" --add sata --controller IntelAhci
 
 # Attach Debian ISO for installation
-VBoxManage storageattach "Source-1" --storagectl "SATA" --port 1 --device 0 --type dvddrive --medium \path\to\debian.iso
+VBoxManage storageattach "Sources" --storagectl "SATA" --port 1 --device 0 --type dvddrive --medium \path\to\debian.iso
 
 # Create virtual disk
-cd ..\Source-1
-VBoxManage createmedium disk --filename Source-1.vdi --size 20480
-VBoxManage storageattach "Source-1" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Source-1.vdi
+cd ..\Sources
+VBoxManage createmedium disk --filename Sources.vdi --size 20480
+VBoxManage storageattach "Sources" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Sources.vdi
 ```
 
 #### Setup VirtualBox Host-Only Network
@@ -297,39 +311,18 @@ This network will allow your Windows host to act as a video client.
 
 **Important**: During initial setup, you'll need Internet access to install packages.
 
-Add a NAT network adapter as the third NIC on both routers during installation:
+The NAT network adapter in each VM allows this and should be enabled during setup.
 
-```cmd
-# Add NAT adapter to Router-R1
-VBoxManage modifyvm "Router-R1" --nic3 nat
-
-# Add NAT adapter to Router-R2
-VBoxManage modifyvm "Router-R2" --nic3 nat
-```
-
-For Debian source VM, add NAT adapter as second NIC:
-
-```cmd
-# Add NAT adapter to source VM
-VBoxManage modifyvm "Source-1" --nic2 nat
-```
+The other network adapters can be disabled temporarily if needed.
 
 #### Enable SSH access for easier management
 
 Using the GUI add port forwarding to allow SSH access to the routers from the host machine during setup:
  - Host IP 127.0.0.1, host port 2222, guest port 22 for Router-R1
  - Host IP 127.0.0.1, host port 2322, guest port 22 for Router-R2
- - Host IP 127.0.0.1, host port 2422, guest port 22 for Source-1
+ - Host IP 127.0.0.1, host port 2422, guest port 22 for Sources
 
-To connect from Windows use an SSH client such as PuTTY to connect to 127.0.0.1:2222
-
-#### Enable PAE/NX for each VM for better performance:
-
-```cmd
-VBoxManage modifyvm "Router-R1" --pae on
-VBoxManage modifyvm "Router-R2" --pae on
-VBoxManage modifyvm "Source-1" --pae on
-```
+To connect from Windows use an SSH client such as PuTTY to connect to 127.0.0.1:2222 / 127.0.0.1:2322 / 127.0.0.1:2422
 
 #### Configure all hard disks as SSD (to match host)
 
@@ -346,8 +339,7 @@ Use the GUI to set each VM's hard disk to be treated as SSD for better performan
    
    Edit `/etc/network/interfaces`:
    ```bash
-   su [input root password set during install]
-   nano /etc/network/interfaces
+   sudo nano /etc/network/interfaces
    ```
 
    Configuration:
@@ -367,8 +359,9 @@ Use the GUI to set each VM's hard disk to be treated as SSD for better performan
    iface enp0s8 inet static
        address 10.0.1.1
        netmask 255.255.255.252
+       up ip route add 192.168.2.0/24 via 10.0.1.2
 
-   # NAT interface (for package installation - remove later)
+   # NAT interface (for package installation)
    # auto enp0s9
    allow-hotplug enp0s9
    iface enp0s9 inet dhcp
@@ -485,16 +478,6 @@ Use the GUI to set each VM's hard disk to be treated as SSD for better performan
    sudo systemctl enable frr
    ```
 
-9. **Add static route to client network**:
-   ```bash
-   sudo ip route add 192.168.2.0/24 via 10.0.1.2
-   
-   # Make persistent by adding to /etc/network/interfaces
-   sudo nano /etc/network/interfaces
-   # Add under enp0s8 interface:
-   #    up ip route add 192.168.2.0/24 via 10.0.1.2
-   ```
-
 #### Install Debian and FRRouting on Router R2
 
 1. **Install Debian** on Router-R2 VM (same as R1)
@@ -586,29 +569,17 @@ Disabling other adapters gets Internet access working.
    sudo systemctl enable frr
    ```
 
-#### Remove NAT Adapters (After Package Installation)
+#### Disable NAT Adapters (After Package Installation)
 
-Should be able to just remove cables from NAT adapters in VirtualBox GUI.
-Might be better to disable the adapters.
-
-Once all packages are installed on both routers, remove the NAT adapters:
-
-```cmd
-# Remove NAT from routers
-VBoxManage modifyvm "Router-R1" --nic3 none
-VBoxManage modifyvm "Router-R2" --nic3 none
-```
-
-Also remove the NAT interface configuration from `/etc/network/interfaces` on both routers.
-
+Disable the NAT adapter and enable all other network adapters on each VM in VirtualBox GUI.
 
 ### Step 5: Setup Multicast Sources
 
-Install Debian on each source VM, then configure static IP and install GStreamer.
+Install Debian on the sources VM, then configure static IP and install GStreamer.
 
-#### Install and Configure Source-1
+#### Install and Configure Sources
 
-1. **Install Debian** on Source-1 VM
+1. **Install Debian** on Sources VM
 
 2. **Configure static IP** - Edit `/etc/network/interfaces`:
 
@@ -622,15 +593,35 @@ Install Debian on each source VM, then configure static IP and install GStreamer
    auto lo
    iface lo inet loopback
 
-   # Primary network interface (source-network)
+   # First network interface (source-network)
    auto enp0s3
    iface enp0s3 inet static
-       address 192.168.1.10
+       address 192.168.1.11
        netmask 255.255.255.0
        gateway 192.168.1.1
-       dns-nameservers 8.8.8.8 8.8.4.4
 
-   # NAT interface (for package installation - remove later)
+   # Second network interface (source-network)
+   auto enp0s4
+   iface enp0s4 inet static
+       address 192.168.1.12
+       netmask 255.255.255.0
+       gateway 192.168.1.1
+
+   # Third network interface (source-network)
+   auto enp0s5
+   iface enp0s5 inet static
+       address 192.168.1.13
+       netmask 255.255.255.0
+       gateway 192.168.1.1
+
+   # Fourth network interface (source-network)
+   auto enp0s6
+   iface enp0s6 inet static
+       address 192.168.1.14
+       netmask 255.255.255.0
+       gateway 192.168.1.1
+
+   # NAT interface (for package installation)
    allow-hotplug enp0s8
    iface enp0s8 inet dhcp
    ```
@@ -643,58 +634,214 @@ Install Debian on each source VM, then configure static IP and install GStreamer
 3. **Install GStreamer**:
 
    ```bash
-   ping -c 4 www.bbc.co.uk
    sudo apt update
    sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-base \
      gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
      gstreamer1.0-plugins-ugly gstreamer1.0-libav
    ```
 
-4. **Create streaming script** - Create `/usr/local/bin/stream.sh`:
+4. Use VirtualBox manager to add a maximum of 10 number h264 raw video captures to the folder /usr/local/bin/video
 
-   ```bash
-   sudo nano /usr/local/bin/stream.sh
-   ```
+```bash
+sudo mkdir -p /usr/local/bin/videos
+```
 
-   ```bash
-   #!/bin/bash
-   # Stream test pattern 1 to 232.1.1.1:5000
-   gst-launch-1.0 -v \
-       videotestsrc is-live=true pattern=smpte horizontal-speed=1 ! \
-       video/x-raw,width=720,height=576,framerate=25/1 ! \
-       textoverlay text="Source 1 - SMPTE Bars" valignment=top halignment=left font-desc="Sans, 32" ! \
-       x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
-       video/x-h264,profile=baseline ! \
-       rtph264pay config-interval=1 pt=96 ! \
-       udpsink host=232.1.1.1 port=5000 auto-multicast=true ttl-mc=5
-   ```
+Use the GUI to add MKV files to this folder.
+
+5. **Create streaming script** - Create `/usr/local/bin/streams.sh`:
+
+```bash
+sudo nano /usr/local/bin/streams.sh
+```
+
+```bash
+#!/bin/bash
+
+# Directory containing MKV files
+VIDEO_DIR="/usr/local/bin/videos"
+
+# Starting IP address and multicast group
+IP_BASE="192.168.1"
+MCAST_BASE="232.1.1"
+START_INDEX=11
+PORT=5000
+
+# PID file location
+PID_FILE="/var/run/gstreamer_pids.txt"
+
+# Function to cleanup existing streams
+cleanup_streams() {
+    if [ -f "$PID_FILE" ]; then
+        echo "Cleaning up existing streams..."
+        while read -r pid; do
+            if ps -p "$pid" > /dev/null 2>&1; then
+                echo "  Killing process $pid"
+                kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null
+            fi
+        done < "$PID_FILE"
+        rm -f "$PID_FILE"
+        echo "Cleanup complete. Waiting for processes to terminate..."
+        sleep 2
+    fi
+}
+
+# Trap signals to cleanup on exit
+trap 'cleanup_streams; exit' SIGTERM SIGINT
+
+# Cleanup any existing streams from previous runs
+cleanup_streams
+
+# Get list of MKV files
+mapfile -t MKV_FILES < <(find "$VIDEO_DIR" -name "*.mkv" | sort)
+
+if [ ${#MKV_FILES[@]} -eq 0 ]; then
+    echo "No MKV files found in $VIDEO_DIR"
+fi
+
+echo "Found ${#MKV_FILES[@]} MKV file(s)"
+
+# Function to stream a single file with seamless looping
+stream_file() {
+    local MKV_FILE="$1"
+    local SOURCE_IP="$2"
+    local MCAST_ADDR="$3"
+    local PORT="$4"
+    
+    # Infinite loop to restart stream when it ends
+    while true; do
+        gst-launch-1.0 -q \
+            filesrc location="$MKV_FILE" ! \
+            matroskademux ! \
+            h264parse ! \
+            rtph264pay config-interval=-1 pt=96 mtu=1400 ! \
+            udpsink host="$MCAST_ADDR" port="$PORT" \
+            bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
+            buffer-size=262144 sync=true
+        
+        # Brief pause before restarting (adjust if needed)
+        sleep 0.05
+    done
+}
+
+# Initialize index
+INDEX=$START_INDEX
+
+# Stream test pattern 1
+SOURCE_IP="${IP_BASE}.${INDEX}"
+MCAST_ADDR="${MCAST_BASE}.${INDEX}"
+gst-launch-1.0 -q \
+    videotestsrc is-live=true pattern=smpte horizontal-speed=1 ! \
+    video/x-raw,width=720,height=576,framerate=25/1 ! \
+    textoverlay text="Source 1 - SMPTE Bars" valignment=top halignment=left font-desc="Sans, 32" ! \
+    x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
+    video/x-h264,profile=baseline ! \
+    rtph264pay config-interval=-1 pt=96 mtu=1400 ! \
+    udpsink host="$MCAST_ADDR" port="$PORT" \
+    bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
+    buffer-size=262144 sync=true &
+
+# Store the PID for cleanup
+echo $! >> "$PID_FILE"
+
+# Increment for next stream
+((INDEX++))
+
+# Stream test pattern 2
+SOURCE_IP="${IP_BASE}.${INDEX}"
+MCAST_ADDR="${MCAST_BASE}.${INDEX}"
+gst-launch-1.0 -v \
+    videotestsrc is-live=true pattern=snow horizontal-speed=2 ! \
+    video/x-raw,width=720,height=576,framerate=25/1 ! \
+    textoverlay text="Source 2 - Snow Pattern" valignment=top halignment=left font-desc="Sans, 32" ! \
+    x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
+    video/x-h264,profile=baseline ! \
+    rtph264pay config-interval=-1 pt=96 mtu=1400 ! \
+    udpsink host="$MCAST_ADDR" port="$PORT" \
+    bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
+    buffer-size=262144 sync=true &
+
+# Store the PID for cleanup
+echo $! >> "$PID_FILE"
+
+# Increment for next stream
+((INDEX++))
+
+# Stream test pattern 3 (H265)
+SOURCE_IP="${IP_BASE}.${INDEX}"
+MCAST_ADDR="${MCAST_BASE}.${INDEX}"
+gst-launch-1.0 -q \
+    videotestsrc is-live=true pattern=circular horizontal-speed=2 ! \
+    video/x-raw,width=720,height=576,framerate=25/1 ! \
+    textoverlay text="Source 3 - H265 Circular" valignment=top halignment=left font-desc="Sans, 32" ! \
+    x265enc tune=zerolatency bitrate=2000 speed-preset=superfast key-int-max=2 ! \
+    video/x-h265,profile=main ! \
+    rtph265pay config-interval=-1 pt=96 ! \
+    udpsink host="$MCAST_ADDR" port="$PORT" \
+    bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
+    buffer-size=262144 sync=true &
+
+# Store the PID for cleanup
+echo $! >> "$PID_FILE"
+
+# Increment for next stream
+((INDEX++))
+
+# Start a stream for each MKV file
+SOURCE_IP="${IP_BASE}.${INDEX}"     # Source IP is the same for all the MKV files
+for MKV_FILE in "${MKV_FILES[@]}"; do
+    MCAST_ADDR="${MCAST_BASE}.${INDEX}"
+    FILENAME=$(basename "$MKV_FILE")
+
+    echo "Starting looping stream $((INDEX - START_INDEX + 1)): $FILENAME"
+    echo "  Source IP: $SOURCE_IP"
+    echo "  Multicast: $MCAST_ADDR:$PORT"
+
+    # Start stream in background with seamless looping
+    stream_file "$MKV_FILE" "$SOURCE_IP" "$MCAST_ADDR" "$PORT" &
+
+    # Store the PID for cleanup
+    echo $! >> "$PID_FILE"
+
+    # Increment for next stream
+    ((INDEX++))
+
+    # Small delay to avoid startup race conditions
+    sleep 1
+done
+
+echo "All streams started with seamless looping. PIDs stored in $PID_FILE"
+echo "Service is running. Press Ctrl+C to stop all streams."
+
+# Keep script running to maintain streams
+wait
+```
 
    Make executable:
    ```bash
-   chmod +x /usr/local/bin/stream.sh
+   chmod +x /usr/local/bin/streams.sh
    ```
 
-5. **Test the stream**:
+5. **Test the streams**:
    ```bash
-   /usr/local/bin/stream.sh
+   /usr/local/bin/streams.sh
    ```
 
-6. Make the stream start on boot
+6. **Make the streams start on boot**
 
     Create service file:
     ```bash
-    sudo nano /etc/systemd/system/stream.service
+    sudo nano /etc/systemd/system/streams.service
     ```
 
     Add:
     ```bash
     [Unit]
-    Description=Multicast RTP test stream
+    Description=Multicast RTP test streams
     After=network.target
 
     [Service]
     Type=simple
-    ExecStart=/usr/local/bin/stream.sh
+    ExecStart=/usr/local/bin/streams.sh
     Restart=on-failure
     User=root
 
@@ -702,128 +849,34 @@ Install Debian on each source VM, then configure static IP and install GStreamer
     WantedBy=multi-user.target
     ```
 
-    Enable and start the service:
-    ```bash
-    sudo systemctl daemon-reload
-    sudo systemctl enable stream.service
-    sudo systemctl start stream.service
-    ```
-
-    Check status and logs:
-    ```bash
-    sudo systemctl status stream.service
-    sudo journalctl -u stream.service -b
-    ```
-
-    Note: The stream might fail if adapter 1 is disabled because GStreamer cannot join the multicast group.
-
-7. Check on the host machine, with NAT adapter still present, that the stream is being sent.
-
-   ```cmd
-   gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.1 multicast-source=192.168.1.10 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
-   ```
-
-8. **Disable NAT adapter** after package installation:
+7. **Disable NAT adapter**:
 
    Shutdown the VM:
    ```bash
    sudo poweroff
    ```
 
-   Finalise:
-   - Disable NAT adapter 2 in VirtualBox GUI.
-   - Enable network adapter 1 (source-network).
+   Modify network adapters:
+   - Disable NAT adapter in VirtualBox GUI.
+   - Enable all other network adapters (source-network).
    - Start the VM.
 
-#### Configure Source-2 and Source-3
+8. **Start the streaming service and check status**
 
-Clone the Source-1 VM in the VirtualBox GUI as Source-2.
+    Enable and start the service:
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable streams.service
+    sudo systemctl start streams.service
+    ```
 
-Clone the Source-1 VM in the VirtualBox GUI as Source-3.
+    Check status and logs:
+    ```bash
+    sudo systemctl status streams.service
+    sudo journalctl -u streams.service -b
+    ```
 
-In each new VM disable network adapter 1 and enable network adapter 2 (NAT).
-
-Change the Source-2 NAT adapter port forwarding host port to 2522.
-
-Change the Source-2 NAT adapter port forwarding host port to 2622.
-
-Boot each new VM in turn.
-
-**Source-2**:
-
-SSH into the machine using 127.0.0.1:2522
-
-```bash
-sudo nano /etc/network/interfaces
-```
-
-Update static IP address to 192.168.1.11
-
-Update stream script:
-
-```bash
-sudo nano /usr/local/bin/stream.sh
-```
-
-```bash
-#!/bin/bash
-gst-launch-1.0 -v \
-    videotestsrc is-live=true pattern=snow horizontal-speed=2 ! \
-    video/x-raw,width=720,height=576,framerate=25/1 ! \
-    textoverlay text="Source 2 - Snow Pattern" valignment=top halignment=left font-desc="Sans, 32" ! \
-    x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
-    video/x-h264,profile=baseline ! \
-    rtph264pay config-interval=1 pt=96 ! \
-    udpsink host=232.1.1.2 port=5000 auto-multicast=true ttl-mc=5
-```
-
-Shutdown the VM:
-```bash
-sudo poweroff
-```
-
-Finalise:
-- Disable NAT adapter 2 in VirtualBox GUI.
-- Enable network adapter 1 (source-network).
-- Start the VM.
-
-**Source-3**:
-
-SSH into the machine using 127.0.0.1:2622
-
-```bash
-sudo nano /etc/network/interfaces
-```
-
-Update static IP address to 192.168.1.12
-
-Update stream script:
-
-```bash
-sudo nano /usr/local/bin/stream.sh
-```
-
-```bash
-#!/bin/bash
-gst-launch-1.0 -v \
-    videotestsrc is-live=true pattern=circular horizontal-speed=2 ! \
-    video/x-raw,width=720,height=576,framerate=25/1 ! \
-    textoverlay text="Source 3 - H265 Circular" valignment=top halignment=left font-desc="Sans, 32" ! \
-    x265enc tune=zerolatency bitrate=2000 speed-preset=superfast key-int-max=2 ! \
-    video/x-h265,profile=main ! \
-    rtph265pay config-interval=1 pt=96 ! \
-    udpsink host=232.1.1.3 port=5000 auto-multicast=true ttl-mc=5
-```
-
-Shutdown the VM:
-```bash
-sudo poweroff
-```
-
-Finalise:
-- Disable NAT adapter 2 in VirtualBox GUI.
-- Enable network adapter 1 (source-network).
-- Start the VM.
+    Note: The streams will fail if the network adapters are disabled because GStreamer cannot join the multicast group.
 
 ### Step 6: Setup Video Client on Windows Host
 
@@ -841,11 +894,17 @@ The video client runs directly on your Windows host computer.
 
 #### Open the streams with GStreamer
 
-gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.1 multicast-source=192.168.1.10 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+Note: Source IP address is the same for all the MKV file streams.
 
-gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.2 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.11 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
-gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.3 multicast-source=192.168.1.12 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph265depay ! queue ! decodebin ! queue ! autovideosink sync=false
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.12 multicast-source=192.168.1.12 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.13 multicast-source=192.168.1.13 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph265depay ! queue ! decodebin ! queue ! autovideosink sync=false
+
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.14 multicast-source=192.168.1.14 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.15 multicast-source=192.168.1.14 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
 Note: VLC is unable to decode H264 and H265 without SDP information.
 
@@ -897,12 +956,6 @@ cat /proc/net/igmp
 # Monitor multicast traffic
 sudo tcpdump -i enp0s3 dst host 232.1.1.1 or dst host 232.1.1.2 or dst host 232.1.1.3
 ```
-
-### Test Client Reception
-
-1. Start streaming on all source VMs
-2. Use GStreamer to receieve video from each multicast group
-3. Verify video playback
 
 ### Verify Source-Specific Multicast
 
@@ -987,183 +1040,6 @@ In VirtualBox GUI, with the machine powered off, disable all except the NAT adap
 If DNS fails, make sure the host DNS settings are correct and disable use of PiHole. 
 
 ## Advanced Scenarios
-
-### Create mulitiple sources on one VM
-
-Clone Source-1 VM naming it Sources and selecting to generate all new MAC addresses.
-
-Start the VM and:
-
-TODO NOT NECESSARY AND DIDN'T WORK - configure all sources to use the same source IP, but different multicast groups.
-
-```bash
-sudo nano /etc/network/interfaces
-```
-
-```bash
-# Loopback interface
-auto lo
-iface lo inet loopback
-
-# Primary network interface (source-network)
-auto enp0s3
-iface enp0s3 inet static
-    address 192.168.1.10/24
-    netmask 255.255.255.0
-    gateway 192.168.1.1
-    dns-nameservers 8.8.8.8 8.8.4.4
-
-iface enp0s3 inet static
-    address 192.168.1.11/24
-iface enp0s3 inet static
-    address 192.168.1.12/24
-iface enp0s3 inet static
-    address 192.168.1.13/24
-iface enp0s3 inet static
-    address 192.168.1.14/24
-iface enp0s3 inet static
-    address 192.168.1.15/24
-iface enp0s3 inet static
-    address 192.168.1.16/24
-iface enp0s3 inet static
-    address 192.168.1.17/24
-iface enp0s3 inet static
-    address 192.168.1.18/24
-iface enp0s3 inet static
-    address 192.168.1.19/24
-
-# NAT interface (for package installation - remove later)
-allow-hotplug enp0s8
-iface enp0s8 inet dhcp
-```
-
-Check the network configuration:
-
-```bash
-ip a
-```
-
-Enable the CD drive in the VM settings and point it to the Guest Additions ISO located in the VirtualBox installation folder (e.g. C:\Program Files\Oracle\VirtualBox\VBoxGuestAdditions.iso).
-
-Enable the NAT adapter as second NIC for package installation.
-
-Once loaded in the VM, install guest additions:
-
-```bash
-sudo apt update
-sudo apt install -y build-essential dkms linux-headers-$(uname -r)
-sudo mount /dev/cdrom /mnt
-sudo /mnt/VBoxLinuxAdditions.run
-```
-
-Use VirtualBox manager to add a maximum of 10 number h264 raw video captures to the folder /usr/local/bin/video
-
-Edit the streaming script to start multiple instances of GStreamer:
-
-```bash
-sudo nano /usr/local/bin/stream.sh
-```
-
-```bash
-#!/bin/bash
-
-# Directory containing MKV files
-VIDEO_DIR="/usr/local/bin/videos"
-
-# Starting IP address and multicast group
-IP_BASE="192.168.1.10"
-MCAST_BASE="232.1.1"
-START_INDEX=10
-PORT=5000
-
-# PID file location
-PID_FILE="/var/run/gstreamer_pids.txt"
-
-# Function to cleanup existing streams
-cleanup_streams() {
-    if [ -f "$PID_FILE" ]; then
-        echo "Cleaning up existing streams..."
-        while read -r pid; do
-            if ps -p "$pid" > /dev/null 2>&1; then
-                echo "  Killing process $pid"
-                kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null
-            fi
-        done < "$PID_FILE"
-        rm -f "$PID_FILE"
-        echo "Cleanup complete. Waiting for processes to terminate..."
-        sleep 2
-    fi
-}
-
-# Trap signals to cleanup on exit
-trap 'cleanup_streams; exit' SIGTERM SIGINT
-
-# Cleanup any existing streams from previous runs
-cleanup_streams
-
-# Get list of MKV files
-mapfile -t MKV_FILES < <(find "$VIDEO_DIR" -name "*.mkv" | sort)
-
-if [ ${#MKV_FILES[@]} -eq 0 ]; then
-    echo "No MKV files found in $VIDEO_DIR"
-    exit 1
-fi
-
-echo "Found ${#MKV_FILES[@]} MKV file(s)"
-
-# Function to stream a single file with seamless looping
-stream_file() {
-    local MKV_FILE="$1"
-    local SOURCE_IP="$2"
-    local MCAST_ADDR="$3"
-    local PORT="$4"
-    
-    # Infinite loop to restart stream when it ends
-    while true; do
-        gst-launch-1.0 -q \
-            filesrc location="$MKV_FILE" ! \
-            matroskademux ! \
-            h264parse ! \
-            rtph264pay config-interval=2 pt=96 mtu=1400 ! \
-            udpsink host="$MCAST_ADDR" port="$PORT" \
-            bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
-            buffer-size=262144 sync=true
-        
-        # Brief pause before restarting (adjust if needed)
-        sleep 0.05
-    done
-}
-
-# Start a stream for each MKV file
-INDEX=$START_INDEX
-for MKV_FILE in "${MKV_FILES[@]}"; do
-    SOURCE_IP="${IP_BASE}"
-    MCAST_ADDR="${MCAST_BASE}.${INDEX}"
-    FILENAME=$(basename "$MKV_FILE")
-    
-    echo "Starting looping stream $((INDEX - START_INDEX + 1)): $FILENAME"
-    echo "  Source IP: $SOURCE_IP"
-    echo "  Multicast: $MCAST_ADDR:$PORT"
-    
-    # Start stream in background with seamless looping
-    stream_file "$MKV_FILE" "$SOURCE_IP" "$MCAST_ADDR" "$PORT" &
-    
-    # Store the PID for cleanup
-    echo $! >> "$PID_FILE"
-    
-    # Increment for next stream
-    ((INDEX++))
-    
-    # Small delay to avoid startup race conditions
-    sleep 1
-done
-
-echo "All streams started with seamless looping. PIDs stored in $PID_FILE"
-echo "Service is running. Press Ctrl+C to stop all streams."
-
-# Keep script running to maintain streams
-wait
-```
 
 ### Add More Routers
 
