@@ -265,7 +265,7 @@ VBoxManage modifyvm "Source-1" ^
   --memory 2048 ^
   --vram 128 ^
   --cpus 2 ^
-  --nic1 intnet --intnet1 "source-network" ^
+  --nic1 intnet --intnet1 "source-network" --nictype1 virtio ^
   --boot1 disk --boot2 dvd
 
 # Add storage controller
@@ -994,7 +994,7 @@ Clone Source-1 VM naming it Sources and selecting to generate all new MAC addres
 
 Start the VM and:
 
-NOT NECESSARY AND DIDN'T WORK - configure all sources to use the same source IP, but different multicast groups.
+TODO NOT NECESSARY AND DIDN'T WORK - configure all sources to use the same source IP, but different multicast groups.
 
 ```bash
 sudo nano /etc/network/interfaces
