@@ -89,13 +89,13 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 │  ┌─────────────────────────────────────────────────────────┐  │
 │  │           VirtualBox Virtual Machines                   │  │
 │  │                                                         │  │
-│  │  ┌───────────────────────────────────────────────────┐  │  │
-│  │  │                    Sources VM                     │  │  │
-│  │  │               GStreamer, MKV files                │  │  │
-│  │  │192.168.1.11 192.168.1.12 192.168.1.13 192.168.1.14│  │  │
-│  │  └──────┬────────────┬────────────┬───────────┬──────┘  │  │
-│  │         │            │            │           │         │  │
-│  │         └────────────┴─────┬──────┴───────────┘         │  │
+│  │                 ┌──────────────────────┐                │  │
+│  │                 │      Sources VM      │                │  │
+│  │                 │ GStreamer, MKV files │                │  │
+│  │                 │     192.168.1.11     │                │  │
+│  │                 └──────────┬───────────┘                │  │
+│  │                            │                            │  │
+│  │                            │                            │  │
 │  │                            │                            │  │
 │  │                    ┌───────┴────────┐                   │  │
 │  │                    │  192.168.1.1   │                   │  │
@@ -144,9 +144,9 @@ We'll use the SSM range **232.0.0.0/8** (standard SSM range):
 | Source | IP Address | Multicast Group | Port | Content |
 |--------|------------|-----------------|------|---------|
 | Source 1 | 192.168.1.11 | 232.1.1.11 | 5000 | Test Pattern 1 |
-| Source 2 | 192.168.1.12 | 232.1.1.12 | 5000 | Test Pattern 2 |
-| Source 3 | 192.168.1.13 | 232.1.1.13 | 5000 | Test Pattern 3 |
-| Sources 4-x | 192.168.1.14 | 232.1.1.14-x | 5000 | MKV files |
+| Source 2 | 192.168.1.11 | 232.1.1.12 | 5000 | Test Pattern 2 |
+| Source 3 | 192.168.1.11 | 232.1.1.13 | 5000 | Test Pattern 3 |
+| Sources 4-x | 192.168.1.11 | 232.1.1.14-x | 5000 | MKV files |
 
 ## Setup Instructions
 
@@ -195,8 +195,10 @@ Note: This approach will result in a much larger debian installation due to the 
 - Set hard disk to 20 GB
 
 **Replicate for the other VMs:**
-- Clone the machine 2 times as Router-R2, Source-1
+- Clone the machine 2 times as Router-R2, Sources
 - Amend each machine to have the network interfaces detailed below
+
+TODO: Add guest additions install instructions
 
 #### Create Router R1
 
@@ -224,7 +226,7 @@ VBoxManage storageattach "Router-R1" --storagectl "SATA" --port 1 --device 0 --t
 # Create virtual disk
 cd "C:\Users\[username]\VirtualBox VMs\Router-R1"
 VBoxManage createmedium disk --filename Router-R1.vdi --size 20480
-VBoxManage storageattach "Router-R1" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Router-R1.vdi
+VBoxManage storageattach "Router-R1" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Router-R1.vdi --nonrotational on
 ```
 
 #### Create Router R2
@@ -238,9 +240,9 @@ VBoxManage modifyvm "Router-R2" ^
   --memory 1024 ^
   --vram 16 ^
   --cpus 1 ^
-  --nic1 intnet --intnet1 "core-link1" ^
-  --nic2 hostonly --hostonlyadapter2 "VirtualBox Host-Only Ethernet Adapter" ^
-  --nic3 nat ^
+  --nic1 intnet --intnet1 "core-link1" --nictype1 virtio ^
+  --nic2 hostonly --hostonlyadapter2 "VirtualBox Host-Only Ethernet Adapter" --nictype2 virtio ^
+  --nic3 nat --nictype3 virtio ^
   --boot1 disk --boot2 dvd ^
   --pae on
 
@@ -256,7 +258,7 @@ VBoxManage storageattach "Router-R2" --storagectl "SATA" --port 1 --device 0 --t
 # Create virtual disk
 cd ..\Router-R2
 VBoxManage createmedium disk --filename Router-R2.vdi --size 20480
-VBoxManage storageattach "Router-R2" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Router-R2.vdi
+VBoxManage storageattach "Router-R2" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Router-R2.vdi --nonrotational on
 ```
 
 **Note**: Router R2's second NIC is configured as a host-only adapter, allowing the Windows host to communicate with the network as a client.
@@ -273,12 +275,9 @@ VBoxManage createvm --name "Sources" --ostype "Debian_64" --register
 VBoxManage modifyvm "Sources" ^
   --memory 2048 ^
   --vram 128 ^
-  --cpus 2 ^
-  --nic1 intnet --intnet1 "source-network-1" --nictype1 virtio ^
-  --nic2 intnet --intnet2 "source-network-2" --nictype2 virtio ^
-  --nic3 intnet --intnet3 "source-network-3" --nictype3 virtio ^
-  --nic4 intnet --intnet4 "source-network-4" --nictype4 virtio ^
-  --nic5 nat ^
+  --cpus 4 ^
+  --nic1 intnet --intnet1 "source-network" --nictype1 virtio ^
+  --nic2 nat --nictype2 virtio ^
   --boot1 disk --boot2 dvd ^
   --pae on
 
@@ -289,9 +288,9 @@ VBoxManage storagectl "Sources" --name "SATA" --add sata --controller IntelAhci
 VBoxManage storageattach "Sources" --storagectl "SATA" --port 1 --device 0 --type dvddrive --medium \path\to\debian.iso
 
 # Create virtual disk
-cd ..\Sources
+cd Sources
 VBoxManage createmedium disk --filename Sources.vdi --size 20480
-VBoxManage storageattach "Sources" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Sources.vdi
+VBoxManage storageattach "Sources" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Sources.vdi --nonrotational on
 ```
 
 #### Setup VirtualBox Host-Only Network
@@ -323,10 +322,6 @@ Using the GUI add port forwarding to allow SSH access to the routers from the ho
  - Host IP 127.0.0.1, host port 2422, guest port 22 for Sources
 
 To connect from Windows use an SSH client such as PuTTY to connect to 127.0.0.1:2222 / 127.0.0.1:2322 / 127.0.0.1:2422
-
-#### Configure all hard disks as SSD (to match host)
-
-Use the GUI to set each VM's hard disk to be treated as SSD for better performance.
 
 ### Step 4: Configure FRRouting Routers
 
@@ -593,31 +588,10 @@ Install Debian on the sources VM, then configure static IP and install GStreamer
    auto lo
    iface lo inet loopback
 
-   # First network interface (source-network)
+   # Prinary network interface (source-network)
    auto enp0s3
    iface enp0s3 inet static
        address 192.168.1.11
-       netmask 255.255.255.0
-       gateway 192.168.1.1
-
-   # Second network interface (source-network)
-   auto enp0s4
-   iface enp0s4 inet static
-       address 192.168.1.12
-       netmask 255.255.255.0
-       gateway 192.168.1.1
-
-   # Third network interface (source-network)
-   auto enp0s5
-   iface enp0s5 inet static
-       address 192.168.1.13
-       netmask 255.255.255.0
-       gateway 192.168.1.1
-
-   # Fourth network interface (source-network)
-   auto enp0s6
-   iface enp0s6 inet static
-       address 192.168.1.14
        netmask 255.255.255.0
        gateway 192.168.1.1
 
@@ -725,13 +699,13 @@ stream_file() {
 
 # Initialize index
 INDEX=$START_INDEX
+SOURCE_IP="${IP_BASE}.${INDEX}"     # Same for all sources
 
 # Stream test pattern 1
-SOURCE_IP="${IP_BASE}.${INDEX}"
 MCAST_ADDR="${MCAST_BASE}.${INDEX}"
 gst-launch-1.0 -q \
     videotestsrc is-live=true pattern=smpte horizontal-speed=1 ! \
-    video/x-raw,width=720,height=576,framerate=25/1 ! \
+    video/x-raw,width=360,height=288,framerate=25/1 ! \
     textoverlay text="Source 1 - SMPTE Bars" valignment=top halignment=left font-desc="Sans, 32" ! \
     x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
     video/x-h264,profile=baseline ! \
@@ -747,11 +721,10 @@ echo $! >> "$PID_FILE"
 ((INDEX++))
 
 # Stream test pattern 2
-SOURCE_IP="${IP_BASE}.${INDEX}"
 MCAST_ADDR="${MCAST_BASE}.${INDEX}"
-gst-launch-1.0 -v \
+gst-launch-1.0 -q \
     videotestsrc is-live=true pattern=snow horizontal-speed=2 ! \
-    video/x-raw,width=720,height=576,framerate=25/1 ! \
+    video/x-raw,width=360,height=288,framerate=25/1 ! \
     textoverlay text="Source 2 - Snow Pattern" valignment=top halignment=left font-desc="Sans, 32" ! \
     x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
     video/x-h264,profile=baseline ! \
@@ -767,15 +740,14 @@ echo $! >> "$PID_FILE"
 ((INDEX++))
 
 # Stream test pattern 3 (H265)
-SOURCE_IP="${IP_BASE}.${INDEX}"
 MCAST_ADDR="${MCAST_BASE}.${INDEX}"
 gst-launch-1.0 -q \
     videotestsrc is-live=true pattern=circular horizontal-speed=2 ! \
-    video/x-raw,width=720,height=576,framerate=25/1 ! \
+    video/x-raw,width=360,height=288,framerate=25/1 ! \
     textoverlay text="Source 3 - H265 Circular" valignment=top halignment=left font-desc="Sans, 32" ! \
     x265enc tune=zerolatency bitrate=2000 speed-preset=superfast key-int-max=2 ! \
-    video/x-h265,profile=main ! \
-    rtph265pay config-interval=-1 pt=96 ! \
+    video/x-h265,profile=main,stream-format=byte-stream,alignment=au ! \
+    rtph265pay config-interval=-1 pt=96 mtu=1400 ! \
     udpsink host="$MCAST_ADDR" port="$PORT" \
     bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
     buffer-size=262144 sync=true &
@@ -787,7 +759,6 @@ echo $! >> "$PID_FILE"
 ((INDEX++))
 
 # Start a stream for each MKV file
-SOURCE_IP="${IP_BASE}.${INDEX}"     # Source IP is the same for all the MKV files
 for MKV_FILE in "${MKV_FILES[@]}"; do
     MCAST_ADDR="${MCAST_BASE}.${INDEX}"
     FILENAME=$(basename "$MKV_FILE")
@@ -818,13 +789,15 @@ wait
 
    Make executable:
    ```bash
-   chmod +x /usr/local/bin/streams.sh
+   sudo chmod +x /usr/local/bin/streams.sh
    ```
 
 5. **Test the streams**:
    ```bash
-   /usr/local/bin/streams.sh
+   sudo /usr/local/bin/streams.sh
    ```
+
+   Likely to fail at this point if the source network adapter is not enabled.
 
 6. **Make the streams start on boot**
 
@@ -834,20 +807,20 @@ wait
     ```
 
     Add:
-    ```bash
-    [Unit]
-    Description=Multicast RTP test streams
-    After=network.target
+```bash
+[Unit]
+Description=Multicast RTP test streams
+After=network.target
 
-    [Service]
-    Type=simple
-    ExecStart=/usr/local/bin/streams.sh
-    Restart=on-failure
-    User=root
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/streams.sh
+Restart=on-failure
+User=root
 
-    [Install]
-    WantedBy=multi-user.target
-    ```
+[Install]
+WantedBy=multi-user.target
+```
 
 7. **Disable NAT adapter**:
 
@@ -894,17 +867,17 @@ The video client runs directly on your Windows host computer.
 
 #### Open the streams with GStreamer
 
-Note: Source IP address is the same for all the MKV file streams.
+Note: Source IP address is the same for all streams.
 
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.11 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
-gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.12 multicast-source=192.168.1.12 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.12 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
-gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.13 multicast-source=192.168.1.13 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph265depay ! queue ! decodebin ! queue ! autovideosink sync=false
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.13 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph265depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
-gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.14 multicast-source=192.168.1.14 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.14 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
-gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.15 multicast-source=192.168.1.14 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.15 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
 Note: VLC is unable to decode H264 and H265 without SDP information.
 
