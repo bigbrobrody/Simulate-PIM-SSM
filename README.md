@@ -1,3 +1,6 @@
+TODO: Would be better to have two source VMs because encoding H265 takes so much load.
+Have one VM for test patterns and one for MKV files.
+
 # Simulate PIM-SSM Network with VirtualBox, FRRouting and GStreamer on Windows
 
 A comprehensive guide to simulate a PIM-SSM (Protocol Independent Multicast - Source-Specific Multicast) network for testing custom video clients with source-specific multicast video streaming on a Windows computer.
@@ -89,12 +92,12 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 │  ┌─────────────────────────────────────────────────────────┐  │
 │  │           VirtualBox Virtual Machines                   │  │
 │  │                                                         │  │
-│  │                 ┌──────────────────────┐                │  │
-│  │                 │      Sources VM      │                │  │
-│  │                 │ GStreamer, MKV files │                │  │
-│  │                 │     192.168.1.11     │                │  │
-│  │                 └──────────┬───────────┘                │  │
-│  │                            │                            │  │
+│  │       ┌─────────────────┐    ┌─────────────────┐        │  │
+│  │       │ Sources-GST VM  │    │ Sources-MKV VM  │        │  │
+│  │       │    GStreamer    │    │ GStreamer, MKV  │        │  │
+│  │       │   192.168.1.11  │    │   192.168.1.21  │        │  │
+│  │       └────────┬────────┘    └────────┬────────┘        │  │
+│  │                └───────────┬──────────┘                 │  │
 │  │                            │                            │  │
 │  │                            │                            │  │
 │  │                    ┌───────┴────────┐                   │  │
@@ -139,14 +142,21 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 
 ### Multicast Groups
 
-We'll use the SSM range **232.0.0.0/8** (standard SSM range):
+We'll use the SSM range **232.0.0.0/8** (standard SSM range).
+
+Sources-GST VM will stream the following multicast groups:
 
 | Source | IP Address | Multicast Group | Port | Content |
 |--------|------------|-----------------|------|---------|
 | Source 1 | 192.168.1.11 | 232.1.1.11 | 5000 | Test Pattern 1 |
 | Source 2 | 192.168.1.11 | 232.1.1.12 | 5000 | Test Pattern 2 |
 | Source 3 | 192.168.1.11 | 232.1.1.13 | 5000 | Test Pattern 3 |
-| Sources 4-x | 192.168.1.11 | 232.1.1.14-x | 5000 | MKV files |
+
+Sources-MKV VM will stream the following multicast groups:
+
+| Source | IP Address | Multicast Group | Port | Content |
+|--------|------------|-----------------|------|---------|
+| Sources 1-x | 192.168.1.21 | 232.1.1.21-x | 5000 | MKV files |
 
 ## Setup Instructions
 
@@ -265,33 +275,35 @@ VBoxManage storageattach "Router-R2" --storagectl "SATA" --port 0 --device 0 --t
 
 ### Step 3: Configure Network Topology
 
-#### Create Sources VM
+#### Create Sources-GST VM
 
-Create Debian VM for multicast sources:
+Create Debian VM for GStreamer generated multicast sources:
 
 ```cmd
-VBoxManage createvm --name "Sources" --ostype "Debian_64" --register
+VBoxManage createvm --name "Sources-GST" --ostype "Debian_64" --register
 
-VBoxManage modifyvm "Sources" ^
+VBoxManage modifyvm "Sources-GST" ^
   --memory 2048 ^
   --vram 128 ^
-  --cpus 4 ^
+  --cpus 2 ^
   --nic1 intnet --intnet1 "source-network" --nictype1 virtio ^
   --nic2 nat --nictype2 virtio ^
   --boot1 disk --boot2 dvd ^
   --pae on
 
 # Add storage controller
-VBoxManage storagectl "Sources" --name "SATA" --add sata --controller IntelAhci
+VBoxManage storagectl "Sources-GST" --name "SATA" --add sata --controller IntelAhci
 
 # Attach Debian ISO for installation
-VBoxManage storageattach "Sources" --storagectl "SATA" --port 1 --device 0 --type dvddrive --medium \path\to\debian.iso
+VBoxManage storageattach "Sources-GST" --storagectl "SATA" --port 1 --device 0 --type dvddrive --medium \path\to\debian.iso
 
 # Create virtual disk
-cd Sources
-VBoxManage createmedium disk --filename Sources.vdi --size 20480
-VBoxManage storageattach "Sources" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Sources.vdi --nonrotational on
+cd Sources-GST
+VBoxManage createmedium disk --filename Sources-GST.vdi --size 20480
+VBoxManage storageattach "Sources-GST" --storagectl "SATA" --port 0 --device 0 --type hdd --medium Sources-GST.vdi --nonrotational on
 ```
+
+Note: Once this VM is fully configured, we'll clone it to create the Sources-MKV VM.
 
 #### Setup VirtualBox Host-Only Network
 
@@ -316,12 +328,13 @@ The other network adapters can be disabled temporarily if needed.
 
 #### Enable SSH access for easier management
 
-Using the GUI add port forwarding to allow SSH access to the routers from the host machine during setup:
+Using the GUI add port forwarding to allow SSH access to the VMs from the host machine during setup:
  - Host IP 127.0.0.1, host port 2222, guest port 22 for Router-R1
  - Host IP 127.0.0.1, host port 2322, guest port 22 for Router-R2
- - Host IP 127.0.0.1, host port 2422, guest port 22 for Sources
+ - Host IP 127.0.0.1, host port 2422, guest port 22 for Sources-GST
+ - Host IP 127.0.0.1, host port 2522, guest port 22 for Sources-MKV (Add after the VM is created)
 
-To connect from Windows use an SSH client such as PuTTY to connect to 127.0.0.1:2222 / 127.0.0.1:2322 / 127.0.0.1:2422
+To connect from Windows use an SSH client such as PuTTY to connect to 127.0.0.1:2222 / 127.0.0.1:2322 / 127.0.0.1:2422 / 127.0.0.1:2522
 
 ### Step 4: Configure FRRouting Routers
 
@@ -570,11 +583,11 @@ Disable the NAT adapter and enable all other network adapters on each VM in Virt
 
 ### Step 5: Setup Multicast Sources
 
-Install Debian on the sources VM, then configure static IP and install GStreamer.
+Install Debian on the Sources-GST VM, then configure static IP and install GStreamer.
 
 #### Install and Configure Sources
 
-1. **Install Debian** on Sources VM
+1. **Install Debian** on Sources-GST VM
 
 2. **Configure static IP** - Edit `/etc/network/interfaces`:
 
@@ -614,14 +627,6 @@ Install Debian on the sources VM, then configure static IP and install GStreamer
      gstreamer1.0-plugins-ugly gstreamer1.0-libav
    ```
 
-4. Use VirtualBox manager to add a maximum of 10 number h264 raw video captures to the folder /usr/local/bin/video
-
-```bash
-sudo mkdir -p /usr/local/bin/videos
-```
-
-Use the GUI to add MKV files to this folder.
-
 5. **Create streaming script** - Create `/usr/local/bin/streams.sh`:
 
 ```bash
@@ -630,9 +635,6 @@ sudo nano /usr/local/bin/streams.sh
 
 ```bash
 #!/bin/bash
-
-# Directory containing MKV files
-VIDEO_DIR="/usr/local/bin/videos"
 
 # Starting IP address and multicast group
 IP_BASE="192.168.1"
@@ -664,38 +666,6 @@ trap 'cleanup_streams; exit' SIGTERM SIGINT
 
 # Cleanup any existing streams from previous runs
 cleanup_streams
-
-# Get list of MKV files
-mapfile -t MKV_FILES < <(find "$VIDEO_DIR" -name "*.mkv" | sort)
-
-if [ ${#MKV_FILES[@]} -eq 0 ]; then
-    echo "No MKV files found in $VIDEO_DIR"
-fi
-
-echo "Found ${#MKV_FILES[@]} MKV file(s)"
-
-# Function to stream a single file with seamless looping
-stream_file() {
-    local MKV_FILE="$1"
-    local SOURCE_IP="$2"
-    local MCAST_ADDR="$3"
-    local PORT="$4"
-    
-    # Infinite loop to restart stream when it ends
-    while true; do
-        gst-launch-1.0 -q \
-            filesrc location="$MKV_FILE" ! \
-            matroskademux ! \
-            h264parse ! \
-            rtph264pay config-interval=-1 pt=96 mtu=1400 ! \
-            udpsink host="$MCAST_ADDR" port="$PORT" \
-            bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
-            buffer-size=262144 sync=true
-        
-        # Brief pause before restarting (adjust if needed)
-        sleep 0.05
-    done
-}
 
 # Initialize index
 INDEX=$START_INDEX
@@ -747,7 +717,7 @@ gst-launch-1.0 -q \
     textoverlay text="Source 3 - H265 Circular" valignment=top halignment=left font-desc="Sans, 32" ! \
     x265enc tune=zerolatency bitrate=2000 speed-preset=superfast key-int-max=2 ! \
     video/x-h265,profile=main,stream-format=byte-stream,alignment=au ! \
-    rtph265pay config-interval=-1 pt=96 mtu=1400 ! \
+    rtph265pay config-interval=1 pt=96 mtu=1400 ! \
     udpsink host="$MCAST_ADDR" port="$PORT" \
     bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
     buffer-size=262144 sync=true &
@@ -758,29 +728,7 @@ echo $! >> "$PID_FILE"
 # Increment for next stream
 ((INDEX++))
 
-# Start a stream for each MKV file
-for MKV_FILE in "${MKV_FILES[@]}"; do
-    MCAST_ADDR="${MCAST_BASE}.${INDEX}"
-    FILENAME=$(basename "$MKV_FILE")
-
-    echo "Starting looping stream $((INDEX - START_INDEX + 1)): $FILENAME"
-    echo "  Source IP: $SOURCE_IP"
-    echo "  Multicast: $MCAST_ADDR:$PORT"
-
-    # Start stream in background with seamless looping
-    stream_file "$MKV_FILE" "$SOURCE_IP" "$MCAST_ADDR" "$PORT" &
-
-    # Store the PID for cleanup
-    echo $! >> "$PID_FILE"
-
-    # Increment for next stream
-    ((INDEX++))
-
-    # Small delay to avoid startup race conditions
-    sleep 1
-done
-
-echo "All streams started with seamless looping. PIDs stored in $PID_FILE"
+echo "All streams started. PIDs stored in $PID_FILE"
 echo "Service is running. Press Ctrl+C to stop all streams."
 
 # Keep script running to maintain streams
@@ -851,6 +799,170 @@ WantedBy=multi-user.target
 
     Note: The streams will fail if the network adapters are disabled because GStreamer cannot join the multicast group.
 
+9. Clone the Sources-GST VM to create Sources-MKV VM:
+
+ - Power off the Sources-GST VM.
+ - In VirtualBox, right-click the Sources-GST VM and select "Clone".
+ - Name the new VM "Sources-MKV", choose "Full clone" and create all new MAC addresses.
+ - Start the Sources-MKV VM.
+
+10. Use VirtualBox manager to add a maximum of 10 number h264 raw video captures to the folder /usr/local/bin/video
+
+```bash
+sudo mkdir -p /usr/local/bin/videos
+```
+
+Use the GUI to add MKV files to this folder.
+
+11. **Edit the streaming script** `/usr/local/bin/streams.sh`:
+
+```bash
+sudo nano /usr/local/bin/streams.sh
+```
+
+```bash
+#!/bin/bash
+
+# Directory containing MKV files
+VIDEO_DIR="/usr/local/bin/videos"
+
+# Starting IP address and multicast group
+IP_BASE="192.168.1"
+MCAST_BASE="232.1.1"
+START_INDEX=21
+PORT=5000
+
+# PID file location
+PID_FILE="/var/run/gstreamer_pids.txt"
+
+# Function to cleanup existing streams
+cleanup_streams() {
+    if [ -f "$PID_FILE" ]; then
+        echo "Cleaning up existing streams..."
+        while read -r pid; do
+            if ps -p "$pid" > /dev/null 2>&1; then
+                echo "  Killing process $pid"
+                kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null
+            fi
+        done < "$PID_FILE"
+        rm -f "$PID_FILE"
+        echo "Cleanup complete. Waiting for processes to terminate..."
+        sleep 2
+    fi
+}
+
+# Trap signals to cleanup on exit
+trap 'cleanup_streams; exit' SIGTERM SIGINT
+
+# Cleanup any existing streams from previous runs
+cleanup_streams
+
+# Get list of MKV files
+mapfile -t MKV_FILES < <(find "$VIDEO_DIR" -name "*.mkv" | sort)
+
+if [ ${#MKV_FILES[@]} -eq 0 ]; then
+    echo "No MKV files found in $VIDEO_DIR"
+fi
+
+echo "Found ${#MKV_FILES[@]} MKV file(s)"
+
+# Function to stream a single file with seamless looping
+stream_file() {
+    local MKV_FILE="$1"
+    local SOURCE_IP="$2"
+    local MCAST_ADDR="$3"
+    local PORT="$4"
+    
+    # Infinite loop to restart stream when it ends
+    while true; do
+        gst-launch-1.0 -q \
+            filesrc location="$MKV_FILE" ! \
+            matroskademux ! \
+            h264parse ! \
+            rtph264pay config-interval=-1 pt=96 mtu=1400 ! \
+            udpsink host="$MCAST_ADDR" port="$PORT" \
+            bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
+            buffer-size=262144 sync=true
+        
+        # Brief pause before restarting (adjust if needed)
+        sleep 0.05
+    done
+}
+
+# Initialize index
+INDEX=$START_INDEX
+SOURCE_IP="${IP_BASE}.${INDEX}"     # Same for all sources
+
+# Start a stream for each MKV file
+for MKV_FILE in "${MKV_FILES[@]}"; do
+    MCAST_ADDR="${MCAST_BASE}.${INDEX}"
+    FILENAME=$(basename "$MKV_FILE")
+
+    echo "Starting looping stream $((INDEX - START_INDEX + 1)): $FILENAME"
+    echo "  Source IP: $SOURCE_IP"
+    echo "  Multicast: $MCAST_ADDR:$PORT"
+
+    # Start stream in background with seamless looping
+    stream_file "$MKV_FILE" "$SOURCE_IP" "$MCAST_ADDR" "$PORT" &
+
+    # Store the PID for cleanup
+    echo $! >> "$PID_FILE"
+
+    # Increment for next stream
+    ((INDEX++))
+
+    # Small delay to avoid startup race conditions
+    sleep 1
+done
+
+echo "All streams started with seamless looping. PIDs stored in $PID_FILE"
+echo "Service is running. Press Ctrl+C to stop all streams."
+
+# Keep script running to maintain streams
+wait
+```
+
+   Make executable:
+   ```bash
+   sudo chmod +x /usr/local/bin/streams.sh
+   ```
+
+12. **Test the streams**:
+   ```bash
+   sudo /usr/local/bin/streams.sh
+   ```
+
+   Likely to fail at this point if the source network adapter is not enabled.
+
+13. **Disable NAT adapter**:
+
+   Shutdown the VM:
+   ```bash
+   sudo poweroff
+   ```
+
+   Modify network adapters:
+   - Disable NAT adapter in VirtualBox GUI.
+   - Enable all other network adapters (source-network).
+   - Start the VM.
+
+14. **Start the streaming service and check status**
+
+    Enable and start the service:
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable streams.service
+    sudo systemctl start streams.service
+    ```
+
+    Check status and logs:
+    ```bash
+    sudo systemctl status streams.service
+    sudo journalctl -u streams.service -b
+    ```
+
+    Note: The streams will fail if the network adapters are disabled because GStreamer cannot join the multicast group.
+
 ### Step 6: Setup Video Client on Windows Host
 
 The video client runs directly on your Windows host computer.
@@ -867,7 +979,7 @@ The video client runs directly on your Windows host computer.
 
 #### Open the streams with GStreamer
 
-Note: Source IP address is the same for all streams.
+Note: Source IP address is the same for all streams from each Sources VM.
 
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.11 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
@@ -875,9 +987,9 @@ gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.12 multicast-source=1
 
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.13 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph265depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
-gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.14 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.21 multicast-source=192.168.1.21 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
-gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.15 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.22 multicast-source=192.168.1.21 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
 Note: VLC is unable to decode H264 and H265 without SDP information.
 
@@ -927,7 +1039,7 @@ ip mroute show
 cat /proc/net/igmp
 
 # Monitor multicast traffic
-sudo tcpdump -i enp0s3 dst host 232.1.1.1 or dst host 232.1.1.2 or dst host 232.1.1.3
+sudo tcpdump -i enp0s3 dst host 232.1.1.11 or dst host 232.1.1.12 or dst host 232.1.1.13
 ```
 
 ### Verify Source-Specific Multicast
