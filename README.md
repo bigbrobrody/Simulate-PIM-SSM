@@ -1,11 +1,21 @@
-TODO: Would be better to have two source VMs because encoding H265 takes so much load.
-Have one VM for test patterns and one for MKV files.
-
 # Simulate PIM-SSM Network with VirtualBox, FRRouting and GStreamer on Windows
 
 A comprehensive guide to simulate a PIM-SSM (Protocol Independent Multicast - Source-Specific Multicast) network for testing custom video clients with source-specific multicast video streaming on a Windows computer.
 
 This guide uses completely free and open-source software: **VirtualBox**, **Debian with FRRouting**, and **GStreamer**. The video client runs directly on the Windows host computer.
+
+The various software used is subject to the licence terms of that software.
+
+Shield: [![CC BY-SA 4.0][cc-by-sa-shield]][cc-by-sa]
+
+These instructions are licensed under a
+[Creative Commons Attribution-ShareAlike 4.0 International License][cc-by-sa].
+
+[![CC BY-SA 4.0][cc-by-sa-image]][cc-by-sa]
+
+[cc-by-sa]: http://creativecommons.org/licenses/by-sa/4.0/
+[cc-by-sa-image]: https://licensebuttons.net/l/by-sa/4.0/88x31.png
+[cc-by-sa-shield]: https://img.shields.io/badge/License-CC%20BY--SA%204.0-lightgrey.svg
 
 ## Table of Contents
 - [Introduction](#introduction)
@@ -70,9 +80,9 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 
 - **Operating System**: Windows 10 or 11 (64-bit)
 - **CPU**: Modern multi-core processor (4+ cores recommended)
-- **RAM**: Minimum 8GB (12GB recommended)
-  - Each router VM: ~1GB
-  - Debian source VM: ~2GB
+- **RAM**: Minimum 8GB (16GB recommended)
+  - Each router VM: ~4GB
+  - Each Debian source VM: ~6GB
   - Windows host overhead: ~2-4GB
 - **Disk Space**: 40GB free space
 - **Network**: Internet connection for initial setup
@@ -220,12 +230,14 @@ VBoxManage createvm --name "Router-R1" --ostype "Debian_64" --register
 VBoxManage modifyvm "Router-R1" ^
   --memory 1024 ^
   --vram 16 ^
-  --cpus 1 ^
-  --nic1 intnet --intnet1 "source-network" ^
-  --nic2 intnet --intnet2 "core-link1" ^
-  --nic3 nat ^
+  --cpus 3 ^
+  --nic1 intnet --intnet1 "source-network" --nictype1 virtio ^
+  --nic2 intnet --intnet2 "core-link1" --nictype2 virtio ^
+  --nic3 nat --nictype3 virtio ^
   --boot1 disk --boot2 dvd ^
-  --pae on
+  --ioapic on ^
+  --pae on ^
+  --audio-driver none
 
 # Add storage controller
 VBoxManage storagectl "Router-R1" --name "SATA" --add sata --controller IntelAhci
@@ -249,12 +261,14 @@ VBoxManage createvm --name "Router-R2" --ostype "Debian_64" --register
 VBoxManage modifyvm "Router-R2" ^
   --memory 1024 ^
   --vram 16 ^
-  --cpus 1 ^
+  --cpus 2 ^
   --nic1 intnet --intnet1 "core-link1" --nictype1 virtio ^
   --nic2 hostonly --hostonlyadapter2 "VirtualBox Host-Only Ethernet Adapter" --nictype2 virtio ^
   --nic3 nat --nictype3 virtio ^
   --boot1 disk --boot2 dvd ^
-  --pae on
+  --ioapic on ^
+  --pae on ^
+  --audio-driver none
 
 # Note: Replace "VirtualBox Host-Only Ethernet Adapter" with your actual adapter name
 # Use 'VBoxManage list hostonlyifs' to see available host-only adapters
@@ -675,7 +689,7 @@ SOURCE_IP="${IP_BASE}.${INDEX}"     # Same for all sources
 MCAST_ADDR="${MCAST_BASE}.${INDEX}"
 gst-launch-1.0 -q \
     videotestsrc is-live=true pattern=smpte horizontal-speed=1 ! \
-    video/x-raw,width=360,height=288,framerate=25/1 ! \
+    video/x-raw,width=720,height=576,framerate=25/1 ! \
     textoverlay text="Source 1 - SMPTE Bars" valignment=top halignment=left font-desc="Sans, 32" ! \
     x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
     video/x-h264,profile=baseline ! \
@@ -694,7 +708,7 @@ echo $! >> "$PID_FILE"
 MCAST_ADDR="${MCAST_BASE}.${INDEX}"
 gst-launch-1.0 -q \
     videotestsrc is-live=true pattern=snow horizontal-speed=2 ! \
-    video/x-raw,width=360,height=288,framerate=25/1 ! \
+    video/x-raw,width=720,height=576,framerate=25/1 ! \
     textoverlay text="Source 2 - Snow Pattern" valignment=top halignment=left font-desc="Sans, 32" ! \
     x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
     video/x-h264,profile=baseline ! \
@@ -814,7 +828,35 @@ sudo mkdir -p /usr/local/bin/videos
 
 Use the GUI to add MKV files to this folder.
 
-11. **Edit the streaming script** `/usr/local/bin/streams.sh`:
+11. **Edit the network settings** `/etc/network/interfaces`:
+
+```bash
+sudo nano /etc/network/interfaces
+```
+
+   ```
+   # Loopback interface
+   auto lo
+   iface lo inet loopback
+
+   # Prinary network interface (source-network)
+   auto enp0s3
+   iface enp0s3 inet static
+       address 192.168.1.21
+       netmask 255.255.255.0
+       gateway 192.168.1.1
+
+   # NAT interface (for package installation)
+   allow-hotplug enp0s8
+   iface enp0s8 inet dhcp
+   ```
+
+   Apply changes:
+   ```bash
+   sudo systemctl restart networking
+   ```
+
+12. **Edit the streaming script** `/usr/local/bin/streams.sh`:
 
 ```bash
 sudo nano /usr/local/bin/streams.sh
