@@ -133,11 +133,11 @@ The solution has been tested on a laptop with Intel Core Ultra 5 226V CPU (8 Cor
 │                               │ (Host-Only Network)           │
 │                               │ 192.168.2.0/24                │
 │                               │                               │
-│                      ┌────────┴─────────┐                     │
-│                      │  Windows Client  │                     │
-│                      │   VLC Player     │                     │
-│                      │   192.168.2.1    │                     │
-│                      └──────────────────┘                     │
+│                ┌──────────────┴────────────┐                  │
+│                │       Windows Client      │                  │
+│                │ GStreamer / ffplay / VLC  │                  │
+│                │         192.168.2.1       │                  │
+│                └───────────────────────────┘                  │
 │                                                               │
 └───────────────────────────────────────────────────────────────┘
 ```
