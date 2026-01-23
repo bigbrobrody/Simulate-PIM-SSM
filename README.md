@@ -87,6 +87,8 @@ This simulation allows you to create a complete PIM-SSM network environment on a
 - **Disk Space**: 40GB free space
 - **Network**: Internet connection for initial setup
 
+The solution has been tested on a laptop with Intel Core Ultra 5 226V CPU (8 Cores, 8 Logical processors), 16GB RAM, and 500GB SSD. This was able to run the 2 router VMs, Sources-MKV VM and 10 instances of GStreamer simultaneously with acceptable performance.
+
 ### Knowledge Requirements
 
 - Basic Linux command line
