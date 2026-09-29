@@ -1016,11 +1016,11 @@ The video client runs directly on your Windows host computer.
 The Windows host needs static routes to reach the simulated source network through Router-R2.
 
 1. Open **Command Prompt** as Administrator.
-2. Add persistent routes:
+2. Add routes:
 
 ```cmd
-route -p add 192.168.1.0 mask 255.255.255.0 192.168.2.254
-route -p add 10.0.1.0 mask 255.255.255.252 192.168.2.254
+route add 192.168.1.0 mask 255.255.255.0 192.168.2.254
+route add 10.0.1.0 mask 255.255.255.252 192.168.2.254
 ```
 
 3. Verify routes are installed:
