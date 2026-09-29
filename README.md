@@ -1011,6 +1011,37 @@ wait
 
 The video client runs directly on your Windows host computer.
 
+#### Configure Windows Host Routing (Required)
+
+The Windows host needs static routes to reach the simulated source network through Router-R2.
+
+1. Open **Command Prompt** as Administrator.
+2. Add persistent routes:
+
+```cmd
+route -p add 192.168.1.0 mask 255.255.255.0 192.168.2.254
+route -p add 10.0.1.0 mask 255.255.255.252 192.168.2.254
+```
+
+3. Verify routes are installed:
+
+```cmd
+route print
+```
+
+4. Verify connectivity:
+
+```cmd
+ping 192.168.2.254
+ping 192.168.1.1
+ping 192.168.1.11
+```
+
+If these pings fail, check that:
+- The VirtualBox host-only adapter is `192.168.2.1/24`
+- Router-R2 LAN interface is `192.168.2.254/24`
+- VM adapters are attached to the expected internal/host-only networks
+
 #### Install GStreamer
 
 1. **Download GStreamer**:
@@ -1149,6 +1180,8 @@ Use Wireshark on Windows to verify IGMPv3 SOURCE records are being sent when you
 
 2. **Verify routing**:
    ```cmd
+   route -p add 192.168.1.0 mask 255.255.255.0 192.168.2.254
+   route -p add 10.0.1.0 mask 255.255.255.252 192.168.2.254
    route print
    tracert 192.168.1.10
    ```
