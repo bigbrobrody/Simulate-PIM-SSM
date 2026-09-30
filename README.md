@@ -838,15 +838,32 @@ echo $! >> "$PID_FILE"
 # Stream test pattern 3 (H265)
 MCAST_ADDR="${MCAST_BASE}.${INDEX}"
 gst-launch-1.0 -q \
-    videotestsrc is-live=true pattern=circular horizontal-speed=2 ! \
-    video/x-raw,width=360,height=288,framerate=25/1 ! \
-    textoverlay text="Source 3 - H265 Circular" valignment=top halignment=left font-desc="Sans, 32" ! \
-    x265enc tune=zerolatency bitrate=2000 speed-preset=superfast key-int-max=2 ! \
-    video/x-h265,profile=main,stream-format=byte-stream,alignment=au ! \
-    rtph265pay config-interval=1 pt=96 mtu=1400 ! \
-    udpsink host="$MCAST_ADDR" port="$PORT" \
-    bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
-    buffer-size=262144 sync=true &
+  videotestsrc is-live=true do-timestamp=true pattern=circular horizontal-speed=2 ! \
+  video/x-raw,width=360,height=288,framerate=25/1 ! \
+  textoverlay text="Source 3 - H265 Circular" \
+    valignment=top halignment=left font-desc="Sans, 32" ! \
+  x265enc \
+    tune=zerolatency \
+    speed-preset=ultrafast \
+    bitrate=2000 \
+    key-int-max=2 \
+    bframes=0 \
+    rc-lookahead=0 \
+    option-string="scenecut=0:repeat-headers=1" ! \
+  video/x-h265,profile=main,stream-format=byte-stream,alignment=au ! \
+  rtph265pay \
+    config-interval=-1 \
+    aggregate-mode=zero-latency \
+    pt=96 \
+    mtu=1200 ! \
+  udpsink \
+    host="$MCAST_ADDR" \
+    port="$PORT" \
+    bind-address="$SOURCE_IP" \
+    auto-multicast=true \
+    ttl-mc=5 \
+    buffer-size=262144 \
+    sync=false &
 
 # Store the PID for cleanup
 echo $! >> "$PID_FILE"
