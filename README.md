@@ -1019,7 +1019,8 @@ The Windows host needs static routes to reach the simulated source network throu
 2. Add routes:
 
 ```cmd
-route add 192.168.1.0 mask 255.255.255.0 192.168.2.254
+route add 192.168.1.11 mask 255.255.255.255 192.168.2.254
+route add 192.168.1.21 mask 255.255.255.255 192.168.2.254
 route add 10.0.1.0 mask 255.255.255.252 192.168.2.254
 ```
 
