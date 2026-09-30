@@ -663,7 +663,7 @@ Install Debian on the Sources-GST VM, then configure static IP and install GStre
    Copy `/home/runner/work/Simulate-PIM-SSM/Simulate-PIM-SSM/Cameras/camera_devices.xml` from the repository to the VM, then place it at:
 
    ```bash
-   sudo cp camera_devices.xml /var/www/onvif/Camera_devices.xml
+   sudo cp camera_devices.xml /var/www/onvif/camera_devices.xml
    ```
 
 5. Create a low-privilege service account and set ownership:
@@ -708,7 +708,7 @@ Install Debian on the Sources-GST VM, then configure static IP and install GStre
 8. Verify from another VM or host:
 
    ```bash
-   curl http://192.168.1.10:8080/Camera_devices.xml
+   curl http://192.168.1.10:8080/camera_devices.xml
    ```
 
 #### Install and Configure Sources
