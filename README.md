@@ -180,7 +180,7 @@ Additional source-network service:
 
 | Service | IP Address | Protocol | Content |
 |---------|------------|----------|---------|
-| ONVIF metadata server | 192.168.1.10 | HTTP (port 80) | `camera_devices.xml` |
+| ONVIF metadata server | 192.168.1.10 | HTTP (port 8080) | `Camera_devices.xml` |
 
 ## Setup Instructions
 
@@ -669,7 +669,14 @@ Install Debian on the Sources-GST VM, then configure static IP and install GStre
    sudo cp camera_devices.xml /var/www/onvif/Camera_devices.xml
    ```
 
-5. Create a systemd service to serve the XML over HTTP:
+5. Create a low-privilege service account and set ownership:
+
+   ```bash
+   sudo useradd --system --no-create-home --shell /usr/sbin/nologin onvif
+   sudo chown -R onvif:onvif /var/www/onvif
+   ```
+
+6. Create a systemd service to serve the XML over HTTP:
 
    ```bash
    sudo nano /etc/systemd/system/onvif-http.service
@@ -684,15 +691,15 @@ Install Debian on the Sources-GST VM, then configure static IP and install GStre
    [Service]
    Type=simple
    WorkingDirectory=/var/www/onvif
-   ExecStart=/usr/bin/python3 -m http.server 80 --bind 192.168.1.10
+   ExecStart=/usr/bin/python3 -m http.server 8080 --bind 192.168.1.10
    Restart=on-failure
-   User=root
+   User=onvif
 
    [Install]
    WantedBy=multi-user.target
    ```
 
-6. Enable and start the service:
+7. Enable and start the service:
 
    ```bash
    sudo systemctl daemon-reload
@@ -701,10 +708,10 @@ Install Debian on the Sources-GST VM, then configure static IP and install GStre
    sudo systemctl status onvif-http.service
    ```
 
-7. Verify from another VM or host:
+8. Verify from another VM or host:
 
    ```bash
-   curl http://192.168.1.10/Camera_devices.xml
+   curl http://192.168.1.10:8080/Camera_devices.xml
    ```
 
 #### Install and Configure Sources
