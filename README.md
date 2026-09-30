@@ -111,6 +111,12 @@ The solution has been tested on a laptop with Intel Core Ultra 5 226V CPU (8 Cor
 │  │       └────────┬────────┘    └────────┬────────┘        │  │
 │  │                └───────────┬──────────┘                 │  │
 │  │                            │                            │  │
+│  │                    ┌───────┴────────┐                   │  │
+│  │                    │ ONVIF-Server VM│                   │  │
+│  │                    │   HTTP + XML   │                   │  │
+│  │                    │   192.168.1.10 │                   │  │
+│  │                    └───────┬────────┘                   │  │
+│  │                            │                            │  │
 │  │                            │                            │  │
 │  │                    ┌───────┴────────┐                   │  │
 │  │                    │  192.168.1.1   │                   │  │
@@ -169,6 +175,12 @@ Sources-MKV VM will stream the following multicast groups:
 | Source | IP Address | Multicast Group | Port | Content |
 |--------|------------|-----------------|------|---------|
 | Sources 1-x | 192.168.1.21 | 232.1.1.21-x | 5000 | MKV files |
+
+Additional source-network service:
+
+| Service | IP Address | Protocol | Content |
+|---------|------------|----------|---------|
+| ONVIF metadata server | 192.168.1.10 | HTTP (port 80) | `camera_devices.xml` |
 
 ## Setup Instructions
 
@@ -601,6 +613,100 @@ Disable the NAT adapter and enable all other network adapters on each VM in Virt
 
 Install Debian on the Sources-GST VM, then configure static IP and install GStreamer.
 
+#### Create ONVIF-Server VM (HTTP XML at 192.168.1.10)
+
+1. Clone `Sources-GST` in VirtualBox to create `ONVIF-Server`:
+   - Power off `Sources-GST`.
+   - Right-click `Sources-GST` → **Clone**.
+   - Name: `ONVIF-Server`, choose **Full clone**, and create new MAC addresses.
+   - Start the `ONVIF-Server` VM.
+
+2. Configure static IP (`/etc/network/interfaces`):
+
+   ```bash
+   sudo nano /etc/network/interfaces
+   ```
+
+   Use:
+   ```
+   # Loopback interface
+   auto lo
+   iface lo inet loopback
+
+   # Primary network interface (source-network)
+   auto enp0s3
+   iface enp0s3 inet static
+       address 192.168.1.10
+       netmask 255.255.255.0
+       gateway 192.168.1.1
+
+   # NAT interface (for package installation)
+   allow-hotplug enp0s8
+   iface enp0s8 inet dhcp
+   ```
+
+   Apply:
+   ```bash
+   sudo systemctl restart networking
+   ```
+
+3. Install Python HTTP support:
+
+   ```bash
+   sudo apt update
+   sudo apt install -y python3
+   ```
+
+4. Create the ONVIF HTTP content directory and copy the XML:
+
+   ```bash
+   sudo mkdir -p /var/www/onvif
+   ```
+
+   Copy `/home/runner/work/Simulate-PIM-SSM/Simulate-PIM-SSM/Cameras/camera_devices.xml` from the repository to the VM, then place it at:
+
+   ```bash
+   sudo cp camera_devices.xml /var/www/onvif/Camera_devices.xml
+   ```
+
+5. Create a systemd service to serve the XML over HTTP:
+
+   ```bash
+   sudo nano /etc/systemd/system/onvif-http.service
+   ```
+
+   ```ini
+   [Unit]
+   Description=ONVIF XML HTTP Server
+   After=network-online.target
+   Wants=network-online.target
+
+   [Service]
+   Type=simple
+   WorkingDirectory=/var/www/onvif
+   ExecStart=/usr/bin/python3 -m http.server 80 --bind 192.168.1.10
+   Restart=on-failure
+   User=root
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+6. Enable and start the service:
+
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable onvif-http.service
+   sudo systemctl start onvif-http.service
+   sudo systemctl status onvif-http.service
+   ```
+
+7. Verify from another VM or host:
+
+   ```bash
+   curl http://192.168.1.10/Camera_devices.xml
+   ```
+
 #### Install and Configure Sources
 
 1. **Install Debian** on Sources-GST VM
@@ -1020,6 +1126,7 @@ The Windows host needs static routes to reach the simulated source network throu
 
 ```cmd
 route add 192.168.1.11 mask 255.255.255.255 192.168.2.254
+route add 192.168.1.10 mask 255.255.255.255 192.168.2.254
 route add 192.168.1.21 mask 255.255.255.255 192.168.2.254
 route add 10.0.1.0 mask 255.255.255.252 192.168.2.254
 ```
@@ -1036,6 +1143,7 @@ route print
 ping 192.168.2.254
 ping 192.168.1.1
 ping 192.168.1.11
+ping 192.168.1.10
 ```
 
 If these pings fail, check that:
