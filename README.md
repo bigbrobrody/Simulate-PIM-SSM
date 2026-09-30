@@ -847,9 +847,7 @@ gst-launch-1.0 -q \
     speed-preset=ultrafast \
     bitrate=2000 \
     key-int-max=2 \
-    bframes=0 \
-    rc-lookahead=0 \
-    option-string="scenecut=0:repeat-headers=1" ! \
+    option-string="bframes=0:rc-lookahead=0:scenecut=0:repeat-headers=1" ! \
   video/x-h265,profile=main,stream-format=byte-stream,alignment=au ! \
   rtph265pay \
     config-interval=-1 \
