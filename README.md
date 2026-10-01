@@ -786,7 +786,7 @@ class DynamicPipeline:
        pipeline_str = (
            "videotestsrc name=src is-live=true pattern=smpte horizontal-speed=1 ! "
            "capsfilter name=capsfilter caps=video/x-raw,width=720,height=576,framerate=25/1 ! "
-           'textoverlay name=overlay text="Source 4 - 720x576 (2 Mbps)" valignment=top halignment=left font-desc="Sans, 32" ! '
+           'textoverlay name=overlay text="Source 4 - 720x576 (2 Mbps)" valignment=top halignment=left font-desc="Sans, 20" ! '
            "x264enc name=encoder tune=zerolatency bitrate=2000 speed-preset=superfast key-int-max=2 byte-stream=true ! "
            "video/x-h264,profile=baseline ! "
            "rtph264pay config-interval=-1 pt=96 mtu=1400 ! "
