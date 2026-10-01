@@ -166,6 +166,7 @@ Sources-GST VM will stream the following multicast groups:
 | Source 1 | 192.168.1.11 | 232.1.1.11 | 5000 | Test Pattern 1 |
 | Source 2 | 192.168.1.11 | 232.1.1.12 | 5000 | Test Pattern 2 |
 | Source 3 | 192.168.1.11 | 232.1.1.13 | 5000 | Test Pattern 3 |
+| Source 4 | 192.168.1.11 | 232.1.1.14 | 5000 | Dynamic profile switching (Python/GStreamer) |
 
 Sources-MKV VM will stream the following multicast groups:
 
@@ -744,14 +745,119 @@ Install Debian on the Sources-GST VM, then configure static IP and install GStre
    sudo systemctl restart networking
    ```
 
-3. **Install GStreamer**:
+3. **Install GStreamer and Python GObject/GStreamer bindings**:
 
    ```bash
    sudo apt update
    sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-base \
      gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
-     gstreamer1.0-plugins-ugly gstreamer1.0-libav
+     gstreamer1.0-plugins-ugly gstreamer1.0-libav \
+     python3-gi python3-gst-1.0 gir1.2-gstreamer-1.0
    ```
+
+4. **Create Source 4 Python script** - Create `/usr/local/bin/source4_dynamic.py`:
+
+```bash
+sudo nano /usr/local/bin/source4_dynamic.py
+```
+
+```python
+import sys
+import gi
+
+gi.require_version("Gst", "1.0")
+gi.require_version("GLib", "2.0")
+from gi.repository import GLib, Gst
+
+# Define configuration profiles: (width, height, bitrate_kbps, text_label)
+CONFIGS = [
+   (720, 576, 2000, "Source 4 - 720x576 (2 Mbps)"),
+   (1280, 576, 3000, "Source 4 - 1280x576 (3 Mbps)"),
+]
+
+
+class DynamicPipeline:
+
+   def __init__(self):
+       Gst.init(None)
+
+       self.current_config_index = 0
+
+       pipeline_str = (
+           "videotestsrc name=src is-live=true pattern=smpte horizontal-speed=1 ! "
+           "capsfilter name=capsfilter caps=video/x-raw,width=720,height=576,framerate=25/1 ! "
+           'textoverlay name=overlay text="Source 4 - 720x576 (2 Mbps)" valignment=top halignment=left font-desc="Sans, 32" ! '
+           "x264enc name=encoder tune=zerolatency bitrate=2000 speed-preset=superfast key-int-max=2 byte-stream=true ! "
+           "video/x-h264,profile=baseline ! "
+           "rtph264pay config-interval=-1 pt=96 mtu=1400 ! "
+           "udpsink host=232.1.1.14 port=5000 bind-address=192.168.1.11 "
+           "auto-multicast=true ttl-mc=5 buffer-size=262144 sync=true"
+       )
+
+       self.pipeline = Gst.parse_launch(pipeline_str)
+
+       self.capsfilter = self.pipeline.get_by_name("capsfilter")
+       self.overlay = self.pipeline.get_by_name("overlay")
+       self.encoder = self.pipeline.get_by_name("encoder")
+
+       self.loop = GLib.MainLoop()
+
+       bus = self.pipeline.get_bus()
+       bus.add_signal_watch()
+       bus.connect("message", self.on_bus_message)
+
+   def toggle_configuration(self):
+       self.current_config_index = 1 - self.current_config_index
+       width, height, bitrate, text = CONFIGS[self.current_config_index]
+
+       print(
+           f"[+] Switching profile: {width}x{height} @ {bitrate} kbps | Overlay: '{text}'",
+           flush=True,
+       )
+
+       self.overlay.set_property("text", text)
+       self.encoder.set_property("bitrate", bitrate)
+
+       new_caps = Gst.Caps.from_string(
+           f"video/x-raw, width={width}, height={height}, framerate=25/1"
+       )
+       self.capsfilter.set_property("caps", new_caps)
+
+       return True
+
+   def on_bus_message(self, bus, message):
+       t = message.type
+       if t == Gst.MessageType.ERROR:
+           err, debug = message.parse_error()
+           print(f"Error: {err}, {debug}", file=sys.stderr)
+           self.loop.quit()
+       elif t == Gst.MessageType.EOS:
+           print("End of stream")
+           self.loop.quit()
+
+   def run(self):
+       print("Starting pipeline...")
+       self.pipeline.set_state(Gst.State.PLAYING)
+
+       GLib.timeout_add(20000, self.toggle_configuration)
+
+       try:
+           self.loop.run()
+       except KeyboardInterrupt:
+           print("\nStopping pipeline...")
+       finally:
+           self.pipeline.set_state(Gst.State.NULL)
+
+
+if __name__ == "__main__":
+   app = DynamicPipeline()
+   app.run()
+```
+
+Make executable:
+```bash
+sudo chmod +x /usr/local/bin/source4_dynamic.py
+```
 
 5. **Create streaming script** - Create `/usr/local/bin/streams.sh`:
 
@@ -869,6 +975,12 @@ echo $! >> "$PID_FILE"
 # Increment for next stream
 ((INDEX++))
 
+# Stream test pattern 4 (Python dynamic profile switching)
+python3 /usr/local/bin/source4_dynamic.py &
+
+# Store the PID for cleanup
+echo $! >> "$PID_FILE"
+
 echo "All streams started. PIDs stored in $PID_FILE"
 echo "Service is running. Press Ctrl+C to stop all streams."
 
@@ -881,14 +993,16 @@ wait
    sudo chmod +x /usr/local/bin/streams.sh
    ```
 
-5. **Test the streams**:
+6. **Test the streams**:
    ```bash
    sudo /usr/local/bin/streams.sh
    ```
 
    Likely to fail at this point if the source network adapter is not enabled.
 
-6. **Make the streams start on boot**
+7. **Make the streams start on boot**
+
+   This service now starts all four GST sources, including `source4_dynamic.py`.
 
     Create service file:
     ```bash
@@ -911,7 +1025,7 @@ User=root
 WantedBy=multi-user.target
 ```
 
-7. **Disable NAT adapter**:
+8. **Disable NAT adapter**:
 
    Shutdown the VM:
    ```bash
@@ -923,7 +1037,7 @@ WantedBy=multi-user.target
    - Enable all other network adapters (source-network).
    - Start the VM.
 
-8. **Start the streaming service and check status**
+9. **Start the streaming service and check status**
 
     Enable and start the service:
     ```bash
@@ -940,14 +1054,14 @@ WantedBy=multi-user.target
 
     Note: The streams will fail if the network adapters are disabled because GStreamer cannot join the multicast group.
 
-9. Clone the Sources-GST VM to create Sources-MKV VM:
+10. Clone the Sources-GST VM to create Sources-MKV VM:
 
  - Power off the Sources-GST VM.
  - In VirtualBox, right-click the Sources-GST VM and select "Clone".
  - Name the new VM "Sources-MKV", choose "Full clone" and create all new MAC addresses.
  - Start the Sources-MKV VM.
 
-10. Use VirtualBox manager to add a maximum of 10 number h264 raw video captures to the folder /usr/local/bin/video
+11. Use VirtualBox manager to add a maximum of 10 number h264 raw video captures to the folder /usr/local/bin/video
 
 ```bash
 sudo mkdir -p /usr/local/bin/videos
@@ -955,7 +1069,7 @@ sudo mkdir -p /usr/local/bin/videos
 
 Use the GUI to add MKV files to this folder.
 
-11. **Edit the network settings** `/etc/network/interfaces`:
+12. **Edit the network settings** `/etc/network/interfaces`:
 
 ```bash
 sudo nano /etc/network/interfaces
@@ -983,7 +1097,7 @@ sudo nano /etc/network/interfaces
    sudo systemctl restart networking
    ```
 
-12. **Edit the streaming script** `/usr/local/bin/streams.sh`:
+13. **Edit the streaming script** `/usr/local/bin/streams.sh`:
 
 ```bash
 sudo nano /usr/local/bin/streams.sh
@@ -1096,14 +1210,14 @@ wait
    sudo chmod +x /usr/local/bin/streams.sh
    ```
 
-12. **Test the streams**:
+14. **Test the streams**:
    ```bash
    sudo /usr/local/bin/streams.sh
    ```
 
    Likely to fail at this point if the source network adapter is not enabled.
 
-13. **Disable NAT adapter**:
+15. **Disable NAT adapter**:
 
    Shutdown the VM:
    ```bash
@@ -1115,7 +1229,7 @@ wait
    - Enable all other network adapters (source-network).
    - Start the VM.
 
-14. **Start the streaming service and check status**
+16. **Start the streaming service and check status**
 
     Enable and start the service:
     ```bash
@@ -1190,6 +1304,8 @@ gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.12 multicast-source=1
 
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.13 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph265depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.14 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.21 multicast-source=192.168.1.21 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.22 multicast-source=192.168.1.21 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
@@ -1242,7 +1358,7 @@ ip mroute show
 cat /proc/net/igmp
 
 # Monitor multicast traffic
-sudo tcpdump -i enp0s3 dst host 232.1.1.11 or dst host 232.1.1.12 or dst host 232.1.1.13
+sudo tcpdump -i enp0s3 dst host 232.1.1.11 or dst host 232.1.1.12 or dst host 232.1.1.13 or dst host 232.1.1.14
 ```
 
 ### Verify Source-Specific Multicast
