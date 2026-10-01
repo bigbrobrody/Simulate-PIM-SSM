@@ -839,7 +839,7 @@ class DynamicPipeline:
        print("Starting pipeline...")
        self.pipeline.set_state(Gst.State.PLAYING)
 
-       GLib.timeout_add(20000, self.toggle_configuration)
+       GLib.timeout_add(10000, self.toggle_configuration)
 
        try:
            self.loop.run()
