@@ -104,40 +104,43 @@ The solution has been tested on a laptop with Intel Core Ultra 5 226V CPU (8 Cor
 │  ┌─────────────────────────────────────────────────────────┐  │
 │  │           VirtualBox Virtual Machines                   │  │
 │  │                                                         │  │
-│  │       ┌─────────────────┐    ┌─────────────────┐        │  │
-│  │       │ Sources-GST VM  │    │ Sources-MKV VM  │        │  │
-│  │       │    GStreamer    │    │ GStreamer, MKV  │        │  │
-│  │       │   192.168.1.11  │    │   192.168.1.21  │        │  │
-│  │       └────────┬────────┘    └────────┬────────┘        │  │
-│  │                └───────────┬──────────┘                 │  │
-│  │                            │                            │  │
-│  │                            │                            │  │
-│  │                    ┌───────┴────────┐                   │  │
-│  │                    │  192.168.1.1   │                   │  │
-│  │                    │   Router R1    │                   │  │
-│  │                    │  Debian + FRR  │                   │  │
-│  │                    │  PIM-SM (SSM)  │                   │  │
-│  │                    │    10.0.1.1    │                   │  │
-│  │                    └───────┬────────┘                   │  │
-│  │                            │                            │  │
-│  │                    ┌───────┴────────┐                   │  │
-│  │                    │    10.0.1.2    │                   │  │
-│  │                    │   Router R2    │                   │  │
-│  │                    │  Debian + FRR  │                   │  │
-│  │                    │  PIM-SM (SSM)  │                   │  │
-│  │                    │  192.168.2.254 │                   │  │
-│  │                    └───────┬────────┘                   │  │
-│  │                            │                            │  │
-│  └────────────────────────────┼────────────────────────────┘  │
-│                               │                               │
-│                               │ (Host-Only Network)           │
-│                               │ 192.168.2.0/24                │
-│                               │                               │
-│                ┌──────────────┴────────────┐                  │
-│                │       Windows Client      │                  │
-│                │ GStreamer / ffplay / VLC  │                  │
-│                │         192.168.2.1       │                  │
-│                └───────────────────────────┘                  │
+│  │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ │  │
+│  │  │ Sources-GST VM  │ │ Sources-MKV VM  │ │ ONVIF-Server VM │ │  │
+│  │  │   GStreamer     │ │ GStreamer, MKV  │ │    HTTP + XML   │ │  │
+│  │  │  192.168.1.11   │ │  192.168.1.21  │ │  192.168.1.10   │ │  │
+│  │  └─────────────────┘ └─────────────────┘ └─────────────────┘ │  │
+│  │                                                             │  │
+│  │            ┌──────────────────────────────────────────────┐  │  │
+│  │            │ Source network 192.168.1.0/24               │  │  │
+│  │            └──────────────────────┬───────────────────────┘  │  │
+│  │                                   │                          │  │
+│  │                                   ▼                          │  │
+│  │                         ┌───────────────┐                  │  │
+│  │                         │  192.168.1.1   │                  │  │
+│  │                         │   Router R1    │                  │  │
+│  │                         │  Debian + FRR  │                  │  │
+│  │                         │  PIM-SM (SSM)  │                  │  │
+│  │                         │    10.0.1.1    │                  │  │
+│  │                         └───────┬───────┘                  │  │
+│  │                                 │                          │  │
+│  │                         ┌───────┴───────┐                  │  │
+│  │                         │    10.0.1.2    │                  │  │
+│  │                         │   Router R2    │                  │  │
+│  │                         │  Debian + FRR  │                  │  │
+│  │                         │  PIM-SM (SSM)  │                  │  │
+│  │                         │  192.168.2.254 │                  │  │
+│  │                         └───────┬───────┘                  │  │
+│  │                                 │                          │  │
+│  └─────────────────────────────────┼────────────────────────────┘  │
+│                                   │                               │
+│                                   │ (Host-Only Network)           │
+│                                   │ 192.168.2.0/24                │
+│                                   │                               │
+│                    ┌──────────────┴──────────────┐                 │
+│                    │       Windows Client       │                 │
+│                    │ GStreamer / ffplay / VLC  │                 │
+│                    │         192.168.2.1       │                 │
+│                    └───────────────────────────┘                 │
 │                                                               │
 └───────────────────────────────────────────────────────────────┘
 ```
@@ -158,17 +161,24 @@ We'll use the SSM range **232.0.0.0/8** (standard SSM range).
 
 Sources-GST VM will stream the following multicast groups:
 
-| Source | IP Address | Multicast Group | Port | Content |
-|--------|------------|-----------------|------|---------|
-| Source 1 | 192.168.1.11 | 232.1.1.11 | 5000 | Test Pattern 1 |
-| Source 2 | 192.168.1.11 | 232.1.1.12 | 5000 | Test Pattern 2 |
-| Source 3 | 192.168.1.11 | 232.1.1.13 | 5000 | Test Pattern 3 |
+| Source | IP Address | Multicast Group | Port | RTSP URI | Content |
+|--------|------------|-----------------|------|----------|---------|
+| Source 1 | 192.168.1.11 | 232.1.1.11 | 5000 | `rtsp://192.168.1.11:8554/source1` | Test Pattern 1 |
+| Source 2 | 192.168.1.11 | 232.1.1.12 | 5000 | `rtsp://192.168.1.11:8554/source2` | Test Pattern 2 |
+| Source 3 | 192.168.1.11 | 232.1.1.13 | 5000 | `rtsp://192.168.1.11:8554/source3` | Test Pattern 3 |
+| Source 4 | 192.168.1.11 | 232.1.1.14 | 5000 | `rtsp://192.168.1.11:8554/source4` | Dynamic profile switching (Python/GStreamer) |
 
 Sources-MKV VM will stream the following multicast groups:
 
-| Source | IP Address | Multicast Group | Port | Content |
-|--------|------------|-----------------|------|---------|
-| Sources 1-x | 192.168.1.21 | 232.1.1.21-x | 5000 | MKV files |
+| Source | IP Address | Multicast Group | Port | RTSP URI | Content |
+|--------|------------|-----------------|------|----------|---------|
+| Sources 1-x | 192.168.1.21 | 232.1.1.21-x | 5000 | `rtsp://192.168.1.21:8554/source-mkv-X` | MKV files |
+
+Additional source-network service (peer of the source VMs):
+
+| Service | IP Address | Protocol | Content |
+|---------|------------|----------|---------|
+| ONVIF metadata server | 192.168.1.10 | HTTP (port 8080) | `Camera_devices.xml` |
 
 ## Setup Instructions
 
@@ -601,6 +611,107 @@ Disable the NAT adapter and enable all other network adapters on each VM in Virt
 
 Install Debian on the Sources-GST VM, then configure static IP and install GStreamer.
 
+#### Create ONVIF-Server VM (HTTP XML at 192.168.1.10)
+
+1. Clone `Sources-GST` in VirtualBox to create `ONVIF-Server`:
+   - Power off `Sources-GST`.
+   - Right-click `Sources-GST` → **Clone**.
+   - Name: `ONVIF-Server`, choose **Full clone**, and create new MAC addresses.
+   - Start the `ONVIF-Server` VM.
+
+2. Configure static IP (`/etc/network/interfaces`):
+
+   ```bash
+   sudo nano /etc/network/interfaces
+   ```
+
+   Use:
+   ```
+   # Loopback interface
+   auto lo
+   iface lo inet loopback
+
+   # Primary network interface (source-network)
+   auto enp0s3
+   iface enp0s3 inet static
+       address 192.168.1.10
+       netmask 255.255.255.0
+       gateway 192.168.1.1
+
+   # NAT interface (for package installation)
+   allow-hotplug enp0s8
+   iface enp0s8 inet dhcp
+   ```
+
+   Apply:
+   ```bash
+   sudo systemctl restart networking
+   ```
+
+3. Install Python HTTP support:
+
+   ```bash
+   sudo apt update
+   sudo apt install -y python3
+   ```
+
+4. Create the ONVIF HTTP content directory and copy the XML:
+
+   ```bash
+   sudo mkdir -p /var/www/onvif
+   ```
+
+   Copy `/home/runner/work/Simulate-PIM-SSM/Simulate-PIM-SSM/Cameras/camera_devices.xml` from the repository to the VM, then place it at:
+
+   ```bash
+   sudo cp camera_devices.xml /var/www/onvif/camera_devices.xml
+   ```
+
+5. Create a low-privilege service account and set ownership:
+
+   ```bash
+   sudo useradd --system --no-create-home --shell /usr/sbin/nologin onvif
+   sudo chown -R onvif:onvif /var/www/onvif
+   ```
+
+6. Create a systemd service to serve the XML over HTTP:
+
+   ```bash
+   sudo nano /etc/systemd/system/onvif-http.service
+   ```
+
+   ```ini
+   [Unit]
+   Description=ONVIF XML HTTP Server
+   After=network-online.target
+   Wants=network-online.target
+
+   [Service]
+   Type=simple
+   WorkingDirectory=/var/www/onvif
+   ExecStart=/usr/bin/python3 -m http.server 8080 --bind 192.168.1.10
+   Restart=on-failure
+   User=onvif
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+7. Enable and start the service:
+
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable onvif-http.service
+   sudo systemctl start onvif-http.service
+   sudo systemctl status onvif-http.service
+   ```
+
+8. Verify from another VM or host:
+
+   ```bash
+   curl http://192.168.1.10:8080/camera_devices.xml
+   ```
+
 #### Install and Configure Sources
 
 1. **Install Debian** on Sources-GST VM
@@ -634,16 +745,155 @@ Install Debian on the Sources-GST VM, then configure static IP and install GStre
    sudo systemctl restart networking
    ```
 
-3. **Install GStreamer**:
+3. **Install GStreamer and Python GObject/GStreamer bindings**:
 
    ```bash
    sudo apt update
    sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-base \
      gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
-     gstreamer1.0-plugins-ugly gstreamer1.0-libav
+     gstreamer1.0-plugins-ugly gstreamer1.0-libav \
+     python3-gi python3-gst-1.0 gir1.2-gstreamer-1.0
    ```
 
-5. **Create streaming script** - Create `/usr/local/bin/streams.sh`:
+4. **Install MediaMTX (RTSP server)**:
+
+   ```bash
+   sudo apt install -y curl tar
+   curl -L https://github.com/bluenviron/mediamtx/releases/download/v1.10.0/mediamtx_v1.10.0_linux_amd64.tar.gz -o /tmp/mediamtx.tar.gz
+   tar -xzf /tmp/mediamtx.tar.gz -C /tmp
+   sudo install -m 0755 /tmp/mediamtx /usr/local/bin/mediamtx
+   sudo install -m 0644 /tmp/mediamtx.yml /etc/mediamtx.yml
+   ```
+
+   Create `/etc/systemd/system/mediamtx.service`:
+   ```ini
+   [Unit]
+   Description=MediaMTX RTSP Server
+   After=network-online.target
+   Wants=network-online.target
+
+   [Service]
+   ExecStart=/usr/local/bin/mediamtx /etc/mediamtx.yml
+   Restart=always
+   RestartSec=2
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+   Enable and start it:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now mediamtx
+   ```
+
+5. **Create Source 4 Python script** - Create `/usr/local/bin/source4_dynamic.py`:
+
+```bash
+sudo nano /usr/local/bin/source4_dynamic.py
+```
+
+```python
+import sys
+import gi
+
+gi.require_version("Gst", "1.0")
+gi.require_version("GLib", "2.0")
+from gi.repository import GLib, Gst
+
+# Define configuration profiles: (width, height, bitrate_kbps, text_label)
+CONFIGS = [
+   (720, 576, 2000, "Source 4 - 720x576 (2 Mbps)"),
+   (1280, 576, 3000, "Source 4 - 1280x576 (3 Mbps)"),
+]
+
+
+class DynamicPipeline:
+
+   def __init__(self):
+       Gst.init(None)
+
+       self.current_config_index = 0
+
+       pipeline_str = (
+           "videotestsrc name=src is-live=true pattern=smpte horizontal-speed=1 ! "
+           "capsfilter name=capsfilter caps=video/x-raw,width=720,height=576,framerate=25/1 ! "
+           'textoverlay name=overlay text="Source 4 - 720x576 (2 Mbps)" valignment=top halignment=left font-desc="Sans, 20" ! '
+           "x264enc name=encoder tune=zerolatency bitrate=2000 speed-preset=superfast key-int-max=2 byte-stream=true ! "
+           "video/x-h264,profile=baseline ! "
+           "rtph264pay config-interval=-1 pt=96 mtu=1400 ! "
+           "tee name=t "
+           "t. ! queue ! udpsink host=232.1.1.14 port=5000 bind-address=192.168.1.11 "
+           "auto-multicast=true ttl-mc=5 buffer-size=262144 sync=true "
+           "t. ! queue ! rtspclientsink location=rtsp://127.0.0.1:8554/source4 protocols=tcp"
+       )
+
+       self.pipeline = Gst.parse_launch(pipeline_str)
+
+       self.capsfilter = self.pipeline.get_by_name("capsfilter")
+       self.overlay = self.pipeline.get_by_name("overlay")
+       self.encoder = self.pipeline.get_by_name("encoder")
+
+       self.loop = GLib.MainLoop()
+
+       bus = self.pipeline.get_bus()
+       bus.add_signal_watch()
+       bus.connect("message", self.on_bus_message)
+
+   def toggle_configuration(self):
+       self.current_config_index = 1 - self.current_config_index
+       width, height, bitrate, text = CONFIGS[self.current_config_index]
+
+       print(
+           f"[+] Switching profile: {width}x{height} @ {bitrate} kbps | Overlay: '{text}'",
+           flush=True,
+       )
+
+       self.overlay.set_property("text", text)
+       self.encoder.set_property("bitrate", bitrate)
+
+       new_caps = Gst.Caps.from_string(
+           f"video/x-raw, width={width}, height={height}, framerate=25/1"
+       )
+       self.capsfilter.set_property("caps", new_caps)
+
+       return True
+
+   def on_bus_message(self, bus, message):
+       t = message.type
+       if t == Gst.MessageType.ERROR:
+           err, debug = message.parse_error()
+           print(f"Error: {err}, {debug}", file=sys.stderr)
+           self.loop.quit()
+       elif t == Gst.MessageType.EOS:
+           print("End of stream")
+           self.loop.quit()
+
+   def run(self):
+       print("Starting pipeline...")
+       self.pipeline.set_state(Gst.State.PLAYING)
+
+       GLib.timeout_add(10000, self.toggle_configuration)
+
+       try:
+           self.loop.run()
+       except KeyboardInterrupt:
+           print("\nStopping pipeline...")
+       finally:
+           self.pipeline.set_state(Gst.State.NULL)
+
+
+if __name__ == "__main__":
+   app = DynamicPipeline()
+   app.run()
+```
+
+Make executable:
+```bash
+sudo chmod +x /usr/local/bin/source4_dynamic.py
+```
+
+6. **Create streaming script** - Create `/usr/local/bin/streams.sh`:
 
 ```bash
 sudo nano /usr/local/bin/streams.sh
@@ -696,9 +946,11 @@ gst-launch-1.0 -q \
     x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
     video/x-h264,profile=baseline ! \
     rtph264pay config-interval=-1 pt=96 mtu=1400 ! \
-    udpsink host="$MCAST_ADDR" port="$PORT" \
+    tee name=t \
+    t. ! queue ! udpsink host="$MCAST_ADDR" port="$PORT" \
     bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
-    buffer-size=262144 sync=true &
+    buffer-size=262144 sync=true \
+    t. ! queue ! rtspclientsink location=rtsp://127.0.0.1:8554/source1 protocols=tcp &
 
 # Store the PID for cleanup
 echo $! >> "$PID_FILE"
@@ -715,9 +967,11 @@ gst-launch-1.0 -q \
     x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
     video/x-h264,profile=baseline ! \
     rtph264pay config-interval=-1 pt=96 mtu=1400 ! \
-    udpsink host="$MCAST_ADDR" port="$PORT" \
+    tee name=t \
+    t. ! queue ! udpsink host="$MCAST_ADDR" port="$PORT" \
     bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
-    buffer-size=262144 sync=true &
+    buffer-size=262144 sync=true \
+    t. ! queue ! rtspclientsink location=rtsp://127.0.0.1:8554/source2 protocols=tcp &
 
 # Store the PID for cleanup
 echo $! >> "$PID_FILE"
@@ -728,21 +982,44 @@ echo $! >> "$PID_FILE"
 # Stream test pattern 3 (H265)
 MCAST_ADDR="${MCAST_BASE}.${INDEX}"
 gst-launch-1.0 -q \
-    videotestsrc is-live=true pattern=circular horizontal-speed=2 ! \
-    video/x-raw,width=360,height=288,framerate=25/1 ! \
-    textoverlay text="Source 3 - H265 Circular" valignment=top halignment=left font-desc="Sans, 32" ! \
-    x265enc tune=zerolatency bitrate=2000 speed-preset=superfast key-int-max=2 ! \
-    video/x-h265,profile=main,stream-format=byte-stream,alignment=au ! \
-    rtph265pay config-interval=1 pt=96 mtu=1400 ! \
-    udpsink host="$MCAST_ADDR" port="$PORT" \
-    bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
-    buffer-size=262144 sync=true &
+  videotestsrc is-live=true do-timestamp=true pattern=circular horizontal-speed=2 ! \
+  video/x-raw,width=360,height=288,framerate=25/1 ! \
+  textoverlay text="Source 3 - H265 Circular" \
+    valignment=top halignment=left font-desc="Sans, 32" ! \
+  x265enc \
+    tune=zerolatency \
+    speed-preset=ultrafast \
+    bitrate=2000 \
+    key-int-max=2 \
+    option-string="bframes=0:rc-lookahead=0:scenecut=0:repeat-headers=1" ! \
+  video/x-h265,profile=main,stream-format=byte-stream,alignment=au ! \
+  rtph265pay \
+    config-interval=-1 \
+    aggregate-mode=zero-latency \
+    pt=96 \
+    mtu=1200 ! \
+  tee name=t \
+  t. ! queue ! udpsink \
+    host="$MCAST_ADDR" \
+    port="$PORT" \
+    bind-address="$SOURCE_IP" \
+    auto-multicast=true \
+    ttl-mc=5 \
+    buffer-size=262144 \
+    sync=false \
+  t. ! queue ! rtspclientsink location=rtsp://127.0.0.1:8554/source3 protocols=tcp &
 
 # Store the PID for cleanup
 echo $! >> "$PID_FILE"
 
 # Increment for next stream
 ((INDEX++))
+
+# Stream test pattern 4 (Python dynamic profile switching)
+python3 /usr/local/bin/source4_dynamic.py &
+
+# Store the PID for cleanup
+echo $! >> "$PID_FILE"
 
 echo "All streams started. PIDs stored in $PID_FILE"
 echo "Service is running. Press Ctrl+C to stop all streams."
@@ -756,14 +1033,16 @@ wait
    sudo chmod +x /usr/local/bin/streams.sh
    ```
 
-5. **Test the streams**:
+7. **Test the streams**:
    ```bash
    sudo /usr/local/bin/streams.sh
    ```
 
    Likely to fail at this point if the source network adapter is not enabled.
 
-6. **Make the streams start on boot**
+8. **Make the streams start on boot**
+
+   This service now starts all four GST sources, including `source4_dynamic.py`.
 
     Create service file:
     ```bash
@@ -786,7 +1065,7 @@ User=root
 WantedBy=multi-user.target
 ```
 
-7. **Disable NAT adapter**:
+8. **Disable NAT adapter**:
 
    Shutdown the VM:
    ```bash
@@ -798,7 +1077,7 @@ WantedBy=multi-user.target
    - Enable all other network adapters (source-network).
    - Start the VM.
 
-8. **Start the streaming service and check status**
+9. **Start the streaming service and check status**
 
     Enable and start the service:
     ```bash
@@ -815,14 +1094,14 @@ WantedBy=multi-user.target
 
     Note: The streams will fail if the network adapters are disabled because GStreamer cannot join the multicast group.
 
-9. Clone the Sources-GST VM to create Sources-MKV VM:
+10. Clone the Sources-GST VM to create Sources-MKV VM:
 
  - Power off the Sources-GST VM.
  - In VirtualBox, right-click the Sources-GST VM and select "Clone".
  - Name the new VM "Sources-MKV", choose "Full clone" and create all new MAC addresses.
  - Start the Sources-MKV VM.
 
-10. Use VirtualBox manager to add a maximum of 10 number h264 raw video captures to the folder /usr/local/bin/video
+11. Use VirtualBox manager to add a maximum of 10 number h264 raw video captures to the folder /usr/local/bin/video
 
 ```bash
 sudo mkdir -p /usr/local/bin/videos
@@ -830,7 +1109,7 @@ sudo mkdir -p /usr/local/bin/videos
 
 Use the GUI to add MKV files to this folder.
 
-11. **Edit the network settings** `/etc/network/interfaces`:
+12. **Edit the network settings** `/etc/network/interfaces`:
 
 ```bash
 sudo nano /etc/network/interfaces
@@ -858,7 +1137,11 @@ sudo nano /etc/network/interfaces
    sudo systemctl restart networking
    ```
 
-12. **Edit the streaming script** `/usr/local/bin/streams.sh`:
+13. **Ensure MediaMTX is installed and running on Sources-MKV**:
+
+    Use the same MediaMTX installation and `mediamtx.service` setup as the Sources-GST VM.
+
+14. **Edit the streaming script** `/usr/local/bin/streams.sh`:
 
 ```bash
 sudo nano /usr/local/bin/streams.sh
@@ -916,6 +1199,7 @@ stream_file() {
     local SOURCE_IP="$2"
     local MCAST_ADDR="$3"
     local PORT="$4"
+    local RTSP_PATH="$5"
     
     # Infinite loop to restart stream when it ends
     while true; do
@@ -924,9 +1208,11 @@ stream_file() {
             matroskademux ! \
             h264parse ! \
             rtph264pay config-interval=-1 pt=96 mtu=1400 ! \
-            udpsink host="$MCAST_ADDR" port="$PORT" \
+            tee name=t \
+            t. ! queue ! udpsink host="$MCAST_ADDR" port="$PORT" \
             bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
-            buffer-size=262144 sync=true
+            buffer-size=262144 sync=true \
+            t. ! queue ! rtspclientsink location=rtsp://127.0.0.1:8554/"$RTSP_PATH" protocols=tcp
         
         # Brief pause before restarting (adjust if needed)
         sleep 0.05
@@ -941,13 +1227,15 @@ SOURCE_IP="${IP_BASE}.${INDEX}"     # Same for all sources
 for MKV_FILE in "${MKV_FILES[@]}"; do
     MCAST_ADDR="${MCAST_BASE}.${INDEX}"
     FILENAME=$(basename "$MKV_FILE")
+    RTSP_PATH="source-mkv-$((INDEX - START_INDEX + 1))"
 
     echo "Starting looping stream $((INDEX - START_INDEX + 1)): $FILENAME"
     echo "  Source IP: $SOURCE_IP"
     echo "  Multicast: $MCAST_ADDR:$PORT"
+    echo "  RTSP: rtsp://$SOURCE_IP:8554/$RTSP_PATH"
 
     # Start stream in background with seamless looping
-    stream_file "$MKV_FILE" "$SOURCE_IP" "$MCAST_ADDR" "$PORT" &
+    stream_file "$MKV_FILE" "$SOURCE_IP" "$MCAST_ADDR" "$PORT" "$RTSP_PATH" &
 
     # Store the PID for cleanup
     echo $! >> "$PID_FILE"
@@ -971,14 +1259,14 @@ wait
    sudo chmod +x /usr/local/bin/streams.sh
    ```
 
-12. **Test the streams**:
+15. **Test the streams**:
    ```bash
    sudo /usr/local/bin/streams.sh
    ```
 
    Likely to fail at this point if the source network adapter is not enabled.
 
-13. **Disable NAT adapter**:
+16. **Disable NAT adapter**:
 
    Shutdown the VM:
    ```bash
@@ -990,7 +1278,7 @@ wait
    - Enable all other network adapters (source-network).
    - Start the VM.
 
-14. **Start the streaming service and check status**
+17. **Start the streaming service and check status**
 
     Enable and start the service:
     ```bash
@@ -1010,6 +1298,40 @@ wait
 ### Step 6: Setup Video Client on Windows Host
 
 The video client runs directly on your Windows host computer.
+
+#### Configure Windows Host Routing (Required)
+
+The Windows host needs static routes to reach the simulated source network through Router-R2.
+
+1. Open **Command Prompt** as Administrator.
+2. Add routes:
+
+```cmd
+route add 192.168.1.11 mask 255.255.255.255 192.168.2.254
+route add 192.168.1.10 mask 255.255.255.255 192.168.2.254
+route add 192.168.1.21 mask 255.255.255.255 192.168.2.254
+route add 10.0.1.0 mask 255.255.255.252 192.168.2.254
+```
+
+3. Verify routes are installed:
+
+```cmd
+route print
+```
+
+4. Verify connectivity:
+
+```cmd
+ping 192.168.2.254
+ping 192.168.1.1
+ping 192.168.1.11
+ping 192.168.1.10
+```
+
+If these pings fail, check that:
+- The VirtualBox host-only adapter is `192.168.2.1/24`
+- Router-R2 LAN interface is `192.168.2.254/24`
+- VM adapters are attached to the expected internal/host-only networks
 
 #### Install GStreamer
 
@@ -1031,9 +1353,21 @@ gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.12 multicast-source=1
 
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.13 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph265depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
+gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.14 multicast-source=192.168.1.11 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.21 multicast-source=192.168.1.21 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.22 multicast-source=192.168.1.21 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+
+#### Open the same streams with RTSP
+
+```cmd
+gst-play-1.0 rtsp://192.168.1.11:8554/source1
+gst-play-1.0 rtsp://192.168.1.11:8554/source2
+gst-play-1.0 rtsp://192.168.1.11:8554/source3
+gst-play-1.0 rtsp://192.168.1.11:8554/source4
+gst-play-1.0 rtsp://192.168.1.21:8554/source-mkv-1
+```
 
 Note: VLC is unable to decode H264 and H265 without SDP information.
 
@@ -1083,7 +1417,7 @@ ip mroute show
 cat /proc/net/igmp
 
 # Monitor multicast traffic
-sudo tcpdump -i enp0s3 dst host 232.1.1.11 or dst host 232.1.1.12 or dst host 232.1.1.13
+sudo tcpdump -i enp0s3 dst host 232.1.1.11 or dst host 232.1.1.12 or dst host 232.1.1.13 or dst host 232.1.1.14
 ```
 
 ### Verify Source-Specific Multicast
@@ -1149,6 +1483,8 @@ Use Wireshark on Windows to verify IGMPv3 SOURCE records are being sent when you
 
 2. **Verify routing**:
    ```cmd
+   route -p add 192.168.1.0 mask 255.255.255.0 192.168.2.254
+   route -p add 10.0.1.0 mask 255.255.255.252 192.168.2.254
    route print
    tracert 192.168.1.10
    ```
