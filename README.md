@@ -161,18 +161,18 @@ We'll use the SSM range **232.0.0.0/8** (standard SSM range).
 
 Sources-GST VM will stream the following multicast groups:
 
-| Source | IP Address | Multicast Group | Port | Content |
-|--------|------------|-----------------|------|---------|
-| Source 1 | 192.168.1.11 | 232.1.1.11 | 5000 | Test Pattern 1 |
-| Source 2 | 192.168.1.11 | 232.1.1.12 | 5000 | Test Pattern 2 |
-| Source 3 | 192.168.1.11 | 232.1.1.13 | 5000 | Test Pattern 3 |
-| Source 4 | 192.168.1.11 | 232.1.1.14 | 5000 | Dynamic profile switching (Python/GStreamer) |
+| Source | IP Address | Multicast Group | Port | RTSP URI | Content |
+|--------|------------|-----------------|------|----------|---------|
+| Source 1 | 192.168.1.11 | 232.1.1.11 | 5000 | `rtsp://192.168.1.11:8554/source1` | Test Pattern 1 |
+| Source 2 | 192.168.1.11 | 232.1.1.12 | 5000 | `rtsp://192.168.1.11:8554/source2` | Test Pattern 2 |
+| Source 3 | 192.168.1.11 | 232.1.1.13 | 5000 | `rtsp://192.168.1.11:8554/source3` | Test Pattern 3 |
+| Source 4 | 192.168.1.11 | 232.1.1.14 | 5000 | `rtsp://192.168.1.11:8554/source4` | Dynamic profile switching (Python/GStreamer) |
 
 Sources-MKV VM will stream the following multicast groups:
 
-| Source | IP Address | Multicast Group | Port | Content |
-|--------|------------|-----------------|------|---------|
-| Sources 1-x | 192.168.1.21 | 232.1.1.21-x | 5000 | MKV files |
+| Source | IP Address | Multicast Group | Port | RTSP URI | Content |
+|--------|------------|-----------------|------|----------|---------|
+| Sources 1-x | 192.168.1.21 | 232.1.1.21-x | 5000 | `rtsp://192.168.1.21:8554/source-mkv-X` | MKV files |
 
 Additional source-network service (peer of the source VMs):
 
@@ -755,7 +755,39 @@ Install Debian on the Sources-GST VM, then configure static IP and install GStre
      python3-gi python3-gst-1.0 gir1.2-gstreamer-1.0
    ```
 
-4. **Create Source 4 Python script** - Create `/usr/local/bin/source4_dynamic.py`:
+4. **Install MediaMTX (RTSP server)**:
+
+   ```bash
+   sudo apt install -y curl tar
+   curl -L https://github.com/bluenviron/mediamtx/releases/download/v1.10.0/mediamtx_v1.10.0_linux_amd64.tar.gz -o /tmp/mediamtx.tar.gz
+   tar -xzf /tmp/mediamtx.tar.gz -C /tmp
+   sudo install -m 0755 /tmp/mediamtx /usr/local/bin/mediamtx
+   sudo install -m 0644 /tmp/mediamtx.yml /etc/mediamtx.yml
+   ```
+
+   Create `/etc/systemd/system/mediamtx.service`:
+   ```ini
+   [Unit]
+   Description=MediaMTX RTSP Server
+   After=network-online.target
+   Wants=network-online.target
+
+   [Service]
+   ExecStart=/usr/local/bin/mediamtx /etc/mediamtx.yml
+   Restart=always
+   RestartSec=2
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+   Enable and start it:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now mediamtx
+   ```
+
+5. **Create Source 4 Python script** - Create `/usr/local/bin/source4_dynamic.py`:
 
 ```bash
 sudo nano /usr/local/bin/source4_dynamic.py
@@ -790,8 +822,10 @@ class DynamicPipeline:
            "x264enc name=encoder tune=zerolatency bitrate=2000 speed-preset=superfast key-int-max=2 byte-stream=true ! "
            "video/x-h264,profile=baseline ! "
            "rtph264pay config-interval=-1 pt=96 mtu=1400 ! "
-           "udpsink host=232.1.1.14 port=5000 bind-address=192.168.1.11 "
-           "auto-multicast=true ttl-mc=5 buffer-size=262144 sync=true"
+           "tee name=t "
+           "t. ! queue ! udpsink host=232.1.1.14 port=5000 bind-address=192.168.1.11 "
+           "auto-multicast=true ttl-mc=5 buffer-size=262144 sync=true "
+           "t. ! queue ! rtspclientsink location=rtsp://127.0.0.1:8554/source4 protocols=tcp"
        )
 
        self.pipeline = Gst.parse_launch(pipeline_str)
@@ -859,7 +893,7 @@ Make executable:
 sudo chmod +x /usr/local/bin/source4_dynamic.py
 ```
 
-5. **Create streaming script** - Create `/usr/local/bin/streams.sh`:
+6. **Create streaming script** - Create `/usr/local/bin/streams.sh`:
 
 ```bash
 sudo nano /usr/local/bin/streams.sh
@@ -912,9 +946,11 @@ gst-launch-1.0 -q \
     x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
     video/x-h264,profile=baseline ! \
     rtph264pay config-interval=-1 pt=96 mtu=1400 ! \
-    udpsink host="$MCAST_ADDR" port="$PORT" \
+    tee name=t \
+    t. ! queue ! udpsink host="$MCAST_ADDR" port="$PORT" \
     bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
-    buffer-size=262144 sync=true &
+    buffer-size=262144 sync=true \
+    t. ! queue ! rtspclientsink location=rtsp://127.0.0.1:8554/source1 protocols=tcp &
 
 # Store the PID for cleanup
 echo $! >> "$PID_FILE"
@@ -931,9 +967,11 @@ gst-launch-1.0 -q \
     x264enc tune=zerolatency bitrate=2000 speed-preset=superfast  key-int-max=2 byte-stream=true ! \
     video/x-h264,profile=baseline ! \
     rtph264pay config-interval=-1 pt=96 mtu=1400 ! \
-    udpsink host="$MCAST_ADDR" port="$PORT" \
+    tee name=t \
+    t. ! queue ! udpsink host="$MCAST_ADDR" port="$PORT" \
     bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
-    buffer-size=262144 sync=true &
+    buffer-size=262144 sync=true \
+    t. ! queue ! rtspclientsink location=rtsp://127.0.0.1:8554/source2 protocols=tcp &
 
 # Store the PID for cleanup
 echo $! >> "$PID_FILE"
@@ -960,14 +998,16 @@ gst-launch-1.0 -q \
     aggregate-mode=zero-latency \
     pt=96 \
     mtu=1200 ! \
-  udpsink \
+  tee name=t \
+  t. ! queue ! udpsink \
     host="$MCAST_ADDR" \
     port="$PORT" \
     bind-address="$SOURCE_IP" \
     auto-multicast=true \
     ttl-mc=5 \
     buffer-size=262144 \
-    sync=false &
+    sync=false \
+  t. ! queue ! rtspclientsink location=rtsp://127.0.0.1:8554/source3 protocols=tcp &
 
 # Store the PID for cleanup
 echo $! >> "$PID_FILE"
@@ -993,14 +1033,14 @@ wait
    sudo chmod +x /usr/local/bin/streams.sh
    ```
 
-6. **Test the streams**:
+7. **Test the streams**:
    ```bash
    sudo /usr/local/bin/streams.sh
    ```
 
    Likely to fail at this point if the source network adapter is not enabled.
 
-7. **Make the streams start on boot**
+8. **Make the streams start on boot**
 
    This service now starts all four GST sources, including `source4_dynamic.py`.
 
@@ -1097,7 +1137,11 @@ sudo nano /etc/network/interfaces
    sudo systemctl restart networking
    ```
 
-13. **Edit the streaming script** `/usr/local/bin/streams.sh`:
+13. **Ensure MediaMTX is installed and running on Sources-MKV**:
+
+    Use the same MediaMTX installation and `mediamtx.service` setup as the Sources-GST VM.
+
+14. **Edit the streaming script** `/usr/local/bin/streams.sh`:
 
 ```bash
 sudo nano /usr/local/bin/streams.sh
@@ -1155,6 +1199,7 @@ stream_file() {
     local SOURCE_IP="$2"
     local MCAST_ADDR="$3"
     local PORT="$4"
+    local RTSP_PATH="$5"
     
     # Infinite loop to restart stream when it ends
     while true; do
@@ -1163,9 +1208,11 @@ stream_file() {
             matroskademux ! \
             h264parse ! \
             rtph264pay config-interval=-1 pt=96 mtu=1400 ! \
-            udpsink host="$MCAST_ADDR" port="$PORT" \
+            tee name=t \
+            t. ! queue ! udpsink host="$MCAST_ADDR" port="$PORT" \
             bind-address="$SOURCE_IP" auto-multicast=true ttl-mc=5 \
-            buffer-size=262144 sync=true
+            buffer-size=262144 sync=true \
+            t. ! queue ! rtspclientsink location=rtsp://127.0.0.1:8554/"$RTSP_PATH" protocols=tcp
         
         # Brief pause before restarting (adjust if needed)
         sleep 0.05
@@ -1180,13 +1227,15 @@ SOURCE_IP="${IP_BASE}.${INDEX}"     # Same for all sources
 for MKV_FILE in "${MKV_FILES[@]}"; do
     MCAST_ADDR="${MCAST_BASE}.${INDEX}"
     FILENAME=$(basename "$MKV_FILE")
+    RTSP_PATH="source-mkv-$((INDEX - START_INDEX + 1))"
 
     echo "Starting looping stream $((INDEX - START_INDEX + 1)): $FILENAME"
     echo "  Source IP: $SOURCE_IP"
     echo "  Multicast: $MCAST_ADDR:$PORT"
+    echo "  RTSP: rtsp://$SOURCE_IP:8554/$RTSP_PATH"
 
     # Start stream in background with seamless looping
-    stream_file "$MKV_FILE" "$SOURCE_IP" "$MCAST_ADDR" "$PORT" &
+    stream_file "$MKV_FILE" "$SOURCE_IP" "$MCAST_ADDR" "$PORT" "$RTSP_PATH" &
 
     # Store the PID for cleanup
     echo $! >> "$PID_FILE"
@@ -1210,14 +1259,14 @@ wait
    sudo chmod +x /usr/local/bin/streams.sh
    ```
 
-14. **Test the streams**:
+15. **Test the streams**:
    ```bash
    sudo /usr/local/bin/streams.sh
    ```
 
    Likely to fail at this point if the source network adapter is not enabled.
 
-15. **Disable NAT adapter**:
+16. **Disable NAT adapter**:
 
    Shutdown the VM:
    ```bash
@@ -1229,7 +1278,7 @@ wait
    - Enable all other network adapters (source-network).
    - Start the VM.
 
-16. **Start the streaming service and check status**
+17. **Start the streaming service and check status**
 
     Enable and start the service:
     ```bash
@@ -1309,6 +1358,16 @@ gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.14 multicast-source=1
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.21 multicast-source=192.168.1.21 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
 
 gst-launch-1.0 -v udpsrc port=5000 multicast-group=232.1.1.22 multicast-source=192.168.1.21 caps="application/x-rtp" buffer-size=2097152 ! queue max-size-buffers=200 max-size-time=0 max-size-bytes=0 ! rtph264depay ! queue ! decodebin ! queue ! autovideosink sync=false
+
+#### Open the same streams with RTSP
+
+```cmd
+gst-play-1.0 rtsp://192.168.1.11:8554/source1
+gst-play-1.0 rtsp://192.168.1.11:8554/source2
+gst-play-1.0 rtsp://192.168.1.11:8554/source3
+gst-play-1.0 rtsp://192.168.1.11:8554/source4
+gst-play-1.0 rtsp://192.168.1.21:8554/source-mkv-1
+```
 
 Note: VLC is unable to decode H264 and H265 without SDP information.
 
